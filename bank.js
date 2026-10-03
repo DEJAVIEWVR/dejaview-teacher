@@ -1,7 +1,7 @@
 import { auth, db, $, esc } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { DESTS } from "./destinations.js";
+import { DESTS, MAX_EXTRA } from "./destinations.js";
 
 let qs = [], quota = {}, editing = null;
 const sel = $("bankDest");
@@ -18,15 +18,15 @@ async function refresh() {
         const [q, l] = await Promise.all([getDocs(collection(db, "Scenarios_tbl")), getDocs(collection(db, "levels"))]);
         qs = q.docs.map(d => ({ id: d.id, ...d.data() }));
         quota = {};
-        l.docs.forEach(d => quota[d.data().name] = d.data().extraWaypoints || 0);
+        l.docs.forEach(d => quota[d.data().name] = d.data().extraWaypoints ?? MAX_EXTRA);
         render();
     } catch (err) { console.error(err); $("bankList").innerHTML = "<p>Unable to load questions.</p>"; }
 }
 
 function render() {
-    const d = sel.value, list = qs.filter(x => x.destinationID === d);
-    const used = list.filter(x => x.isExtra).length, max = quota[d] || 0;
-    $("bankQuota").textContent = `Extra questions: ${used} of ${max} used (the admin sets how many extra waypoints this destination has).`;
+    const d = sel.value, list = qs.filter(x => x.destinationID === d).sort((a, b) => (a.isExtra ? 1 : 0) - (b.isExtra ? 1 : 0) || (a.order || 0) - (b.order || 0));
+    const used = list.filter(x => x.isExtra).length, max = quota[d] ?? MAX_EXTRA;
+    $("bankQuota").textContent = `Extra questions: ${used} of ${max} used (each destination has 3 reserve waypoints).`;
     $("addQ").disabled = used >= max;
     $("bankList").innerHTML = list.map(x => `<div class="qcard"><div class="qtop">
         <span class="chip">${esc(x.speakerNPC || "Tourist")}${x.isExtra ? " · Extra" : ""}</span>
@@ -45,7 +45,9 @@ function openForm(x) {
     [0, 1, 2].forEach(i => {
         const o = x?.options?.[i] || {};
         $("o" + i + "t").value = o.text || "";
-        $("o" + i + "s").value = o.scoreWeight ?? [100, 50, 0][i];
+        const v = o.scoreWeight ?? [100, 50, 0][i];
+        if (![...$("o" + i + "s").options].some(op => op.value === String(v))) $("o" + i + "s").add(new Option(v + "%", v));
+        $("o" + i + "s").value = v;
         $("o" + i + "r").value = o.reaction || "";
     });
     $("qDialog").showModal();
@@ -61,7 +63,7 @@ $("qForm").addEventListener("submit", async e => {
         if (editing) await updateDoc(doc(db, "Scenarios_tbl", editing.id), data);
         else {
             const used = qs.filter(x => x.destinationID === sel.value && x.isExtra).length;
-            if (used >= (quota[sel.value] || 0)) { alert("No extra waypoint slots left."); return; }
+            if (used >= (quota[sel.value] ?? MAX_EXTRA)) { alert("No extra waypoint slots left."); return; }
             await addDoc(collection(db, "Scenarios_tbl"), { ...data, isExtra: true, createdBy: auth.currentUser.uid, createdAt: serverTimestamp() });
         }
         $("qDialog").close();

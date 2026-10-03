@@ -19,6 +19,7 @@
         <a href="#pending">Pending <span class="badge" id="pendingCount">0</span></a>
         <a href="#students">Student List</a>
         <a href="#performance">Performance</a>
+        <a href="#modules">Training Modules</a>
         <a href="#bank">Question Bank</a>
     </nav>
     <main>
@@ -40,8 +41,8 @@
             <h2>Student List</h2>
             <div class="student-controls"><input type="text" id="searchStudent" placeholder="Search Student ID, Name, Username, or Section"></div>
             <div class="student-table-container"><table>
-                <thead><tr><th>Student ID</th><th>Full Name</th><th>Username</th><th>Section</th><th>Actions</th></tr></thead>
-                <tbody id="studentTable"><tr><td colspan="5">Loading...</td></tr></tbody>
+                <thead><tr><th>Student ID</th><th>Full Name</th><th>Username</th><th>Section</th><th>Account expires</th><th>Actions</th></tr></thead>
+                <tbody id="studentTable"><tr><td colspan="6">Loading...</td></tr></tbody>
             </table></div>
         </section>
 
@@ -55,6 +56,13 @@
             </table></div>
         </section>
 
+        <section id="modules">
+            <h2>Training Modules</h2>
+            <p class="hint">Learning content for each destination. Add notes and a link to a file or video.</p>
+            <div class="student-controls"><select id="modDest"></select> <button class="add-button" id="addMod">+ Add Module</button></div>
+            <div id="modList">Loading...</div>
+        </section>
+
         <section id="bank">
             <h2>Question Bank</h2>
             <div class="student-controls">
@@ -66,6 +74,19 @@
             <div id="scenarioList" hidden></div>
         </section>
     </main>
+
+    <dialog id="mDialog">
+        <form id="mForm">
+            <h2 id="mTitleHead">Add module</h2>
+            <label for="mTitle">Title</label>
+            <input id="mTitle" required>
+            <label for="mContent">Content / lesson notes</label>
+            <textarea id="mContent" rows="6" required></textarea>
+            <label for="mLink">Link (optional: Google Drive, YouTube, PDF)</label>
+            <input id="mLink" type="url" placeholder="https://">
+            <div class="row"><button type="button" class="delete-button" id="mCancel">Cancel</button><button type="submit" class="add-button">Save</button></div>
+        </form>
+    </dialog>
 
     <dialog id="qDialog">
         <form id="qForm">
@@ -81,5 +102,6 @@
 
     <script type="module" src="teacher.js"></script>
     <script type="module" src="bank.js"></script>
+    <script type="module" src="modules.js"></script>
 </body>
 </html>

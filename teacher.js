@@ -1,10 +1,16 @@
 import { auth, db, $, esc } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { collection, query, where, getDocs, getDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { collection, query, where, getDocs, getDoc, doc, updateDoc, deleteDoc, Timestamp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { TERM_MONTHS } from "./destinations.js";
 
 const CRIT = ["knowledge", "timeMgmt", "navigation", "problemSolving", "completion"];
 let sections = [], students = [], scores = [];
 const empty = (n, m) => `<tr><td colspan="${n}">${m}</td></tr>`;
+
+// Account validity: TERM_MONTHS after approval or renewal
+const newExpiry = () => { const d = new Date(); d.setMonth(d.getMonth() + TERM_MONTHS); return Timestamp.fromDate(d); };
+const expDate = s => (s.expiresAt && s.expiresAt.toDate) ? s.expiresAt.toDate() : null;
+const isExpired = s => { const d = expDate(s); return !!d && d < new Date(); };
 
 onAuthStateChanged(auth, async user => {
     if (!user) return location.replace("login.html");
@@ -24,14 +30,14 @@ onAuthStateChanged(auth, async user => {
     const d = t.data();
     sections = d.sections || [];
     $("who").textContent = `${d.name || "Instructor"} | Section(s): ${sections.join(", ") || "none assigned"}`;
-    document.body.style.visibility = "visible";   // only reached by a confirmed teacher
+    document.body.style.visibility = "visible";
     load();
 });
 
 async function load() {
-    loadScenarios();
     if (!sections.length) {
-        $("pendingBody").innerHTML = $("studentTable").innerHTML = empty(5, "No section assigned. Ask the admin.");
+        $("pendingBody").innerHTML = empty(5, "No section assigned. Ask the admin.");
+        $("studentTable").innerHTML = empty(6, "No section assigned. Ask the admin.");
         return;
     }
     try {
@@ -45,7 +51,7 @@ async function load() {
         render();
     } catch (err) {
         console.error(err);
-        $("studentTable").innerHTML = empty(5, "Unable to load students.");
+        $("studentTable").innerHTML = empty(6, "Unable to load students.");
     }
 }
 
@@ -62,10 +68,14 @@ function render() {
          <button class="delete-button" data-act="remove" data-id="${s.id}">Reject</button></td></tr>`).join("")
         || empty(5, "No pending registrations.");
 
-    $("studentTable").innerHTML = actAll.filter(match).map(s =>
-        `<tr>${cells(s)}<td><button class="edit-button" data-act="edit" data-id="${s.id}">Edit</button>
-         <button class="delete-button" data-act="remove" data-id="${s.id}">Remove</button></td></tr>`).join("")
-        || empty(5, "No active students found.");
+    $("studentTable").innerHTML = actAll.filter(match).map(s => {
+        const d = expDate(s), ex = isExpired(s);
+        return `<tr class="${ex ? "expired" : ""}">${cells(s)}
+         <td>${d ? d.toLocaleDateString() : "-"}${ex ? '<span class="tag">Expired</span>' : ""}</td>
+         <td><button class="edit-button" data-act="edit" data-id="${s.id}">Edit</button>
+         <button class="approve-button" data-act="renew" data-id="${s.id}">Renew</button>
+         <button class="delete-button" data-act="remove" data-id="${s.id}">Remove</button></td></tr>`;
+    }).join("") || empty(6, "No active students found.");
 
     const keep = $("perfStudent").value;
     $("perfStudent").innerHTML = '<option value="">Select a student</option>' +
@@ -85,26 +95,17 @@ function showPerf() {
     $("perfSummary").textContent = rows.length ? `Levels completed: ${rows.length} | Average total: ${avg.toFixed(1)} / 100` : "";
 }
 
-async function loadScenarios() {
-    try {
-        const snap = await getDocs(collection(db, "Scenarios_tbl"));
-        $("scenarioList").innerHTML = snap.docs.map(d => {
-            const s = d.data();
-            const opts = (s.options || []).map(o => `<li>${esc(o.text)} (score ${esc(o.scoreWeight)})</li>`).join("");
-            return `<div class="scenario-card"><p class="scenario-question">${esc(s.questionText)}</p>
-                <p class="scenario-info">${esc(s.speakerNPC)} | ${esc(s.destinationID)}</p><ul>${opts}</ul></div>`;
-        }).join("") || "<p>No scenario questions yet.</p>";
-    } catch (err) { console.error(err); $("scenarioList").innerHTML = "<p>Unable to load scenarios.</p>"; }
-}
-
 document.addEventListener("click", async e => {
     const b = e.target.closest("button[data-act]");
     if (!b) return;
     const s = students.find(x => x.id === b.dataset.id);
     const ref = doc(db, "students", b.dataset.id);
     try {
-        if (b.dataset.act === "approve") await updateDoc(ref, { status: "active" });
-        else if (b.dataset.act === "remove") {
+        if (b.dataset.act === "approve") await updateDoc(ref, { status: "active", approvedAt: Timestamp.now(), expiresAt: newExpiry() });
+        else if (b.dataset.act === "renew") {
+            if (!confirm(`Extend ${s.fullname}'s account by ${TERM_MONTHS} months from today?`)) return;
+            await updateDoc(ref, { status: "active", expiresAt: newExpiry() });
+        } else if (b.dataset.act === "remove") {
             if (!confirm(`Remove ${s.fullname}?`)) return;
             await deleteDoc(ref);
         } else if (b.dataset.act === "edit") {

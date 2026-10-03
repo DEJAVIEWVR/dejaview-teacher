@@ -18,6 +18,7 @@
         <a href="#sections">Sections</a>
         <a href="#teachers">Teacher Accounts</a>
         <a href="#waypoints">Extra Waypoints</a>
+        <a href="#import">Import Questions</a>
     </nav>
     <main>
         <section id="sections">
@@ -59,8 +60,15 @@
             </table></div>
             <p id="wpMsg"></p>
         </section>
+        <section id="import">
+            <h2>Import Questions from the Game</h2>
+            <p class="hint">Upload the JSON file exported from Unity. Questions already in the bank (same destination and text) are skipped.</p>
+            <input type="file" id="importFile" accept=".json" multiple> <button class="add-button" id="importBtn">Import</button>
+            <p id="importMsg"></p>
+        </section>
     </main>
     <script type="module" src="admin.js"></script>
     <script type="module" src="waypoints.js"></script>
+    <script type="module" src="import.js"></script>
 </body>
 </html>
