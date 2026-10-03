@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && exists(/databases/$(db)/documents/admins/$(request.auth.uid)); }
+    function isTeacher() { return signedIn() && exists(/databases/$(db)/documents/teachers/$(request.auth.uid)); }
+    function teachesSection(sec) {
+      return isTeacher() && sec in get(/databases/$(db)/documents/teachers/$(request.auth.uid)).data.sections;
+    }
+    function activeStudent() {
+      return signedIn() && get(/databases/$(db)/documents/students/$(request.auth.uid)).data.status == "active";
+    }
+
+    match /students/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.status == "pending"
+                    && request.resource.data.role == "student";
+      allow read: if signedIn() && (request.auth.uid == uid || teachesSection(resource.data.section) || isAdmin());
+      allow update: if (teachesSection(resource.data.section) && request.resource.data.section == resource.data.section) || isAdmin();
+      allow delete: if teachesSection(resource.data.section) || isAdmin();
+    }
+    match /scores/{id} {
+      allow create: if activeStudent() && request.resource.data.uid == request.auth.uid;
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || teachesSection(resource.data.section) || isAdmin());
+    }
+    match /sections/{id} {
+      allow read: if true;            // the register screen needs it before login
+      allow write: if isAdmin();
+    }
+    match /teachers/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;          // create admins by hand in the Console
+    }
+    match /Scenarios_tbl/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

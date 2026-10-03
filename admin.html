@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DejaView - Admin Portal</title>
+    <style>body { visibility: hidden; }</style>
+    <link rel="stylesheet" href="dejaview.css">
+</head>
+<body>
+    <header>
+        <img src="images/bulsu-seal.png" alt="BulSU">
+        <h1>DejaView Admin</h1>
+        <p>Administrator</p>
+        <button id="logoutButton" class="logout-button">Logout</button>
+    </header>
+    <nav>
+        <a href="#sections">Sections</a>
+        <a href="#teachers">Teacher Accounts</a>
+        <a href="#waypoints">Extra Waypoints</a>
+    </nav>
+    <main>
+        <section id="sections">
+            <h2>Sections</h2>
+            <p class="hint">These sections appear as the dropdown in the VR register screen and are assigned to teachers.</p>
+            <div class="student-controls"><input id="sectionName" placeholder="e.g. BSTM-3A"> <button class="add-button" id="addSection">Add Section</button></div>
+            <div class="student-table-container"><table>
+                <thead><tr><th>Section</th><th>Action</th></tr></thead>
+                <tbody id="sectionBody"></tbody>
+            </table></div>
+        </section>
+
+        <section id="teachers">
+            <h2>Teacher Accounts</h2>
+            <form id="teacherForm">
+                <div class="form-grid">
+                    <input id="tName" placeholder="Full name" required>
+                    <input id="tEmpId" placeholder="Employee ID" required>
+                    <input id="tEmail" type="email" placeholder="Email" required>
+                    <input id="tPass" type="password" placeholder="Password (min 6 characters)" minlength="6" required>
+                    <select id="tSections" multiple></select>
+                </div>
+                <p class="hint">Hold Ctrl (or Cmd) to select more than one section.</p>
+                <button type="submit" class="add-button">Create Teacher</button>
+                <p id="msg"></p>
+            </form>
+            <div class="student-table-container"><table>
+                <thead><tr><th>Name</th><th>Employee ID</th><th>Email</th><th>Sections</th><th>Actions</th></tr></thead>
+                <tbody id="teacherBody"></tbody>
+            </table></div>
+        </section>
+
+        <section id="waypoints">
+            <h2>Extra Waypoints per Destination</h2>
+            <p class="hint">Teachers can add one extra question for each extra waypoint (maximum 3 per destination).</p>
+            <div class="student-table-container"><table>
+                <thead><tr><th>Destination</th><th>Extra waypoints</th></tr></thead>
+                <tbody id="wpBody"></tbody>
+            </table></div>
+            <p id="wpMsg"></p>
+        </section>
+    </main>
+    <script type="module" src="admin.js"></script>
+    <script type="module" src="waypoints.js"></script>
+</body>
+</html>

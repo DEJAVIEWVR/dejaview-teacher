@@ -1,0 +1,75 @@
+:root{--bg:#f3f5fb;--card:#fff;--ink:#1e2433;--muted:#6b7385;--line:#e4e8f1;--brand:#4f46e5;--brand2:#7c3aed;--ok:#16a34a;--bad:#dc2626;--radius:14px;--shadow:0 4px 18px rgba(30,36,51,.07)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55}
+h1,h2,h3{margin:0 0 8px}
+h2{font-size:22px}
+p{margin:0 0 10px}
+.hint{color:var(--muted);font-size:13px}
+
+/* LOGIN */
+.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--brand),var(--brand2))}
+.login-container{width:92%;max-width:410px;background:var(--card);padding:38px 34px;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.25);text-align:center}
+.login-container h1{font-size:34px;background:linear-gradient(135deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.login-container h2{font-size:17px;font-weight:600;color:var(--ink)}
+.login-subtitle{color:var(--muted);font-size:14px;margin-bottom:24px}
+#loginForm{display:flex;flex-direction:column;gap:12px}
+#loginForm button{padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-size:16px;font-weight:600;cursor:pointer}
+#loginForm button:hover{filter:brightness(1.08)}
+#loginMessage{color:var(--bad);margin:0;min-height:20px;font-size:14px}
+
+/* HEADER + NAV */
+header{position:relative;padding:28px 24px;color:#fff;text-align:center;background:linear-gradient(135deg,var(--brand),var(--brand2))}
+header h1{font-size:30px;letter-spacing:.5px}
+header p{margin:0;opacity:.9;font-size:14px}
+.logout-button{position:absolute;right:22px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.5);padding:9px 18px;border-radius:999px;cursor:pointer;font-weight:600}
+.logout-button:hover{background:rgba(255,255,255,.3)}
+nav{position:sticky;top:0;z-index:50;display:flex;justify-content:center;gap:6px;flex-wrap:wrap;padding:10px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav a{color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;padding:8px 16px;border-radius:999px}
+nav a:hover{background:#eef0ff;color:var(--brand)}
+
+/* LAYOUT + CARDS */
+main{width:92%;max-width:1150px;margin:28px auto 50px}
+section,.home-section,.student-section,.module-section{background:var(--card);padding:26px;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px}
+.home-section{border-left:6px solid var(--brand)}
+.badge{display:inline-block;background:var(--bad);color:#fff;border-radius:999px;padding:1px 9px;font-size:12px;margin-left:4px;vertical-align:middle}
+
+/* CONTROLS */
+input,select,textarea{font-family:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid #c7c3ff;border-color:var(--brand)}
+#loginForm input{width:100%}
+.student-controls,.admin-form{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.student-controls input,.admin-form input,.admin-form select{flex:1;min-width:200px}
+.admin-form button{padding:11px 20px;border:none;border-radius:10px;background:var(--brand);color:#fff;font-weight:600;cursor:pointer}
+.admin-form button:hover{filter:brightness(1.1)}
+.admin-msg{color:var(--bad);min-height:20px}
+.perf-summary{font-weight:600;color:var(--brand);margin:6px 0 12px}
+
+/* TABLES */
+.student-table-container{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;z-index:2;background:#f0f1fb;color:#3a3f57;font-size:12.5px;text-transform:uppercase;letter-spacing:.5px}
+tbody tr:nth-child(even){background:#fafbff}
+tbody tr:hover{background:#f1f2ff}
+tr:last-child td{border-bottom:none}
+
+/* BUTTONS IN TABLES */
+.edit-button,.delete-button,.approve-button{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;margin-right:6px;color:#fff}
+.edit-button{background:var(--brand)}
+.delete-button{background:var(--bad)}
+.approve-button{background:var(--ok)}
+.edit-button:hover,.delete-button:hover,.approve-button:hover{filter:brightness(1.1)}
+
+/* SCENARIOS */
+.scenario-card{border:1px solid var(--line);border-left:5px solid var(--brand2);border-radius:12px;padding:16px 18px;margin-bottom:14px;background:#fcfcff}
+.scenario-question{font-weight:700;font-size:16px}
+.scenario-info{color:var(--muted);font-size:13px}
+.scenario-card ul{margin:8px 0 0;padding-left:20px;color:#3a3f57}
+
+@media(max-width:700px){
+  header{padding:22px 16px 70px}
+  .logout-button{top:auto;bottom:16px;right:50%;transform:translateX(50%)}
+  section,.home-section,.student-section,.module-section{padding:18px}
+  table{min-width:640px}
+}

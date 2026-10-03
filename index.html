@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DejaView - Instructor Dashboard</title>
+    <style>body { visibility: hidden; }</style>
+    <link rel="stylesheet" href="dejaview.css">
+</head>
+<body>
+    <header>
+        <img src="images/bulsu-seal.png" alt="BulSU">
+        <h1>DejaView</h1>
+        <p id="who">Loading...</p>
+        <button id="logoutButton" class="logout-button">Logout</button>
+    </header>
+    <nav>
+        <a href="#home">Home</a>
+        <a href="#pending">Pending <span class="badge" id="pendingCount">0</span></a>
+        <a href="#students">Student List</a>
+        <a href="#performance">Performance</a>
+        <a href="#bank">Question Bank</a>
+    </nav>
+    <main>
+        <section id="home">
+            <h2>Welcome, Instructor</h2>
+            <p>You only see students and records from your assigned section(s). New students register in the VR app and appear under Pending Approvals.</p>
+        </section>
+
+        <section id="pending">
+            <h2>Pending Approvals</h2>
+            <p class="hint">Approve only students you recognize. Rejecting removes the registration record.</p>
+            <div class="student-table-container"><table>
+                <thead><tr><th>Student ID</th><th>Full Name</th><th>Username</th><th>Section</th><th>Actions</th></tr></thead>
+                <tbody id="pendingBody"><tr><td colspan="5">Loading...</td></tr></tbody>
+            </table></div>
+        </section>
+
+        <section id="students">
+            <h2>Student List</h2>
+            <div class="student-controls"><input type="text" id="searchStudent" placeholder="Search Student ID, Name, Username, or Section"></div>
+            <div class="student-table-container"><table>
+                <thead><tr><th>Student ID</th><th>Full Name</th><th>Username</th><th>Section</th><th>Actions</th></tr></thead>
+                <tbody id="studentTable"><tr><td colspan="5">Loading...</td></tr></tbody>
+            </table></div>
+        </section>
+
+        <section id="performance">
+            <h2>Performance Monitoring</h2>
+            <div class="student-controls"><select id="perfStudent"><option value="">Select a student</option></select></div>
+            <p class="perf-summary" id="perfSummary"></p>
+            <div class="student-table-container"><table>
+                <thead><tr><th>Destination</th><th>Knowledge (35)</th><th>Time (20)</th><th>Navigation (20)</th><th>Problem-solving (15)</th><th>Completion (10)</th><th>Total</th></tr></thead>
+                <tbody id="perfBody"><tr><td colspan="7">Select a student.</td></tr></tbody>
+            </table></div>
+        </section>
+
+        <section id="bank">
+            <h2>Question Bank</h2>
+            <div class="student-controls">
+                <select id="bankDest"></select>
+                <button class="add-button" id="addQ">+ Add Question</button>
+            </div>
+            <p class="hint" id="bankQuota"></p>
+            <div id="bankList">Loading...</div>
+            <div id="scenarioList" hidden></div>
+        </section>
+    </main>
+
+    <dialog id="qDialog">
+        <form id="qForm">
+            <h2 id="qTitle">Add question</h2>
+            <label for="qSpeaker">Speaker (NPC name)</label>
+            <input id="qSpeaker" required>
+            <label for="qText">Question</label>
+            <textarea id="qText" rows="3" required></textarea>
+            <div id="qOpts"></div>
+            <div class="row"><button type="button" class="delete-button" id="qCancel">Cancel</button><button type="submit" class="add-button">Save</button></div>
+        </form>
+    </dialog>
+
+    <script type="module" src="teacher.js"></script>
+    <script type="module" src="bank.js"></script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DejaView - Staff Login</title>
+    <style>
+        :root { --maroon: #a50012; --maroon-dark: #7d000d; --gold: #f6a829; --ink: #2b2b2b; --muted: #6b6b6b; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; min-height: 100%; }
+        body {
+            font-family: "Segoe UI", Roboto, Arial, sans-serif;
+            background: var(--maroon);
+            color: var(--ink);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 24px 5vw;
+        }
+
+        /* Full-screen BulSU background on desktop */
+        .hero {
+            position: fixed; inset: 0; z-index: 0;
+            background: var(--maroon) url("images/bulsu-bg.jpg") no-repeat right center / cover;
+        }
+
+        .card {
+            position: relative; z-index: 1;
+            width: 100%; max-width: 380px;
+            background: #fff;
+            border-radius: 18px;
+            border-top: 6px solid var(--gold);
+            padding: 32px 30px 26px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, .35);
+            text-align: center;
+        }
+        .seal { width: 84px; height: 84px; object-fit: contain; margin-bottom: 8px; }
+        h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 2rem; color: var(--maroon); letter-spacing: .5px; }
+        h2 { margin: 4px 0 2px; font-size: .95rem; font-weight: 600; color: var(--ink); }
+        .sub { margin: 0 0 22px; font-size: .82rem; color: var(--muted); }
+
+        form { text-align: left; }
+        label { display: block; margin: 0 0 6px; font-size: .8rem; font-weight: 600; color: var(--ink); }
+        .field { margin-bottom: 16px; }
+        .field input {
+            width: 100%; padding: 12px 14px; font-size: 1rem;
+            border: 1.5px solid #d9d9d9; border-radius: 10px; background: #fafafa;
+            outline: none; transition: border-color .15s, box-shadow .15s;
+        }
+        .field input:focus { border-color: var(--maroon); box-shadow: 0 0 0 3px rgba(165, 0, 18, .15); background: #fff; }
+        .pw { position: relative; }
+        .pw input { padding-right: 64px; }
+        .pw button {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            border: 0; background: none; color: var(--maroon); font-size: .8rem; font-weight: 600; cursor: pointer; padding: 6px;
+        }
+
+        .login-btn {
+            width: 100%; padding: 13px; margin-top: 4px;
+            border: 0; border-radius: 10px; cursor: pointer;
+            background: var(--maroon); color: #fff; font-size: 1rem; font-weight: 700; letter-spacing: .3px;
+            transition: background .15s, transform .05s;
+        }
+        .login-btn:hover { background: var(--maroon-dark); }
+        .login-btn:active { transform: scale(.98); }
+        .login-btn:disabled { opacity: .7; cursor: wait; }
+
+        #loginMessage { min-height: 1.3em; margin: 12px 0 0; text-align: center; font-size: .85rem; color: var(--maroon); }
+        .foot { margin: 16px 0 0; text-align: center; font-size: .72rem; color: var(--muted); line-height: 1.4; }
+
+        /* Tablets and phones: banner on top, form below */
+        @media (max-width: 1000px) {
+            body { display: block; padding: 0; background: #f4f1ee; }
+            .hero { position: static; height: 210px; background-position: 70% center; }
+            .card { margin: -40px auto 30px; width: calc(100% - 32px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="hero" role="img" aria-label="Bulacan State University Sarmiento Campus, Department of Hospitality and Tourism Management"></div>
+
+    <main class="card">
+        <img class="seal" src="images/bulsu-seal.png" alt="Bulacan State University seal">
+        <h1>DejaView</h1>
+        <h2>Instructor &amp; Admin Portal</h2>
+        <p class="sub">Students register and log in through the VR app.</p>
+
+        <form id="loginForm">
+            <div class="field">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="you@example.com" autocomplete="username" required>
+            </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <div class="pw">
+                    <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required>
+                    <button type="button" id="togglePw">Show</button>
+                </div>
+            </div>
+            <button type="submit" class="login-btn" id="loginBtn">Login</button>
+            <p id="loginMessage"></p>
+        </form>
+
+        <p class="foot">Bulacan State University &middot; Sarmiento Campus<br>Department of Hospitality and Tourism Management</p>
+    </main>
+
+    <script type="module">
+        import { auth, $ } from "./firebase.js";
+        import { signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+
+        onAuthStateChanged(auth, u => { if (u) location.replace("index.html"); });
+
+        $("togglePw").addEventListener("click", () => {
+            const show = $("password").type === "password";
+            $("password").type = show ? "text" : "password";
+            $("togglePw").textContent = show ? "Hide" : "Show";
+        });
+
+        $("loginForm").addEventListener("submit", async e => {
+            e.preventDefault();
+            $("loginMessage").textContent = "Logging in...";
+            $("loginBtn").disabled = true;
+            try {
+                await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value);
+            } catch (err) {
+                console.error(err);
+                $("loginMessage").textContent = "Invalid email or password.";
+                $("loginBtn").disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
