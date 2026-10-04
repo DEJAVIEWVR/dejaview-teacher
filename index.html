@@ -47,19 +47,46 @@
         </section>
 
         <section id="performance">
+            <div id="printHeader">
+                <img src="images/bulsu-seal.png" alt="BulSU" class="ph-seal">
+                <div class="ph-text">
+                    <strong>Bulacan State University &middot; Sarmiento Campus</strong><br>
+                    Department of Hospitality and Tourism Management<br>
+                    <span class="ph-title">DejaView VR &ndash; Student Performance Report</span>
+                </div>
+                <table class="ph-info">
+                    <tr><td>Student</td><td id="phName"></td></tr>
+                    <tr><td>Student ID</td><td id="phId"></td></tr>
+                    <tr><td>Section</td><td id="phSection"></td></tr>
+                    <tr><td>Instructor</td><td id="phTeacher"></td></tr>
+                    <tr><td>Date printed</td><td id="phDate"></td></tr>
+                </table>
+            </div>
             <h2>Performance Monitoring</h2>
-            <div class="student-controls"><select id="perfStudent"><option value="">Select a student</option></select></div>
+            <div class="student-controls">
+                <select id="perfStudent"><option value="">Select a student</option></select>
+                <button class="add-button" id="printBtn">Print / Save as PDF</button>
+            </div>
             <p class="perf-summary" id="perfSummary"></p>
             <div class="student-table-container"><table>
                 <thead><tr><th>Destination</th><th>Knowledge (35)</th><th>Time (20)</th><th>Navigation (20)</th><th>Problem-solving (15)</th><th>Completion (10)</th><th>Total</th></tr></thead>
                 <tbody id="perfBody"><tr><td colspan="7">Select a student.</td></tr></tbody>
             </table></div>
+            <div id="printFooter">
+                <div class="sig"><span></span>Instructor's signature</div>
+                <div class="sig"><span></span>Date</div>
+            </div>
         </section>
 
         <section id="modules">
-            <h2>Training Modules</h2>
-            <p class="hint">Learning content for each destination. Add notes and a link to a file or video.</p>
-            <div class="student-controls"><select id="modDest"></select> <button class="add-button" id="addMod">+ Add Module</button></div>
+            <div class="sec-head">
+                <div>
+                    <h2>Training Modules</h2>
+                    <p class="hint">Learning content for each destination. Add lesson notes and a link to a file or video.</p>
+                </div>
+                <button class="add-button" id="addMod">+ Add Module</button>
+            </div>
+            <div id="modTabs" class="tabs"></div>
             <div id="modList">Loading...</div>
         </section>
 
@@ -101,6 +128,7 @@
     </dialog>
 
     <script type="module" src="teacher.js"></script>
+    <script src="print.js"></script>
     <script type="module" src="bank.js"></script>
     <script type="module" src="modules.js"></script>
 </body>
