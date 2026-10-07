@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DejaView - My Results</title>
+    <style>body { visibility: hidden; }</style>
+    <link rel="stylesheet" href="dejaview.css">
+</head>
+<body>
+    <header>
+        <img src="images/bulsu-seal.png" alt="BulSU">
+        <h1>DejaView</h1>
+        <p id="who">Loading...</p>
+        <button id="logoutButton" class="logout-button">Logout</button>
+    </header>
+    <main>
+        <section id="profile"><h2>My Account</h2><div id="profileBody"></div></section>
+        <section id="live"><h2>Assessment</h2><div id="liveBody">Loading...</div></section>
+        <section id="modules">
+            <h2>Training Modules</h2>
+            <p class="hint">Study these lessons before your VR activity. They cover each destination you will guide tourists through.</p>
+            <div id="modTabs" class="tabs"></div>
+            <div id="modList">Loading...</div>
+        </section>
+        <section id="results">
+            <div class="sec-head"><h2>My Results</h2><button class="add-button" id="pdfBtn" style="display:none">Download PDF report</button></div>
+            <div id="resultList">Loading...</div>
+        </section>
+    </main>
+    <script type="module" src="student.js"></script>
+</body>
+</html>
