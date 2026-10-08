@@ -122,11 +122,12 @@ service cloud.firestore {
       allow create, update: if activeStudent() && request.auth.uid == uid
                     && request.resource.data.keys().hasOnly(["uid","studentIdNumber","fullname","section","scene","level","destination","phase",
                                                              "stopNumber","stopTotal","stopTitle","speaker","question","mapLeft","answerLeft",
-                                                             "x","z","yaw","updatedAt"])
+                                                             "x","z","yaw","viewUrl","updatedAt"])
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.section == mySection()
                     && request.resource.data.phase in ["menu","walking","reading","answering","finished","offline"]
-                    && request.resource.data.question.size() <= 600;
+                    && request.resource.data.question.size() <= 600
+                    && request.resource.data.viewUrl.size() <= 80;
       allow read: if signedIn() && (teachesSection(resource.data.section) || isAdmin());
       allow delete: if signedIn() && (request.auth.uid == uid || teachesSection(resource.data.section) || isAdmin());
     }
