@@ -44,6 +44,11 @@
         <section id="live">
             <h2>Live Monitor</h2>
             <p class="hint">See where the student is and what they are being asked, right now. It updates by itself every few seconds. Leave this page open on the laptop or the TV.</p>
+            <div class="toolbar" id="manualWatch">
+                <label class="grow">Watch the live picture: type the tablet's address (Settings &gt; Wi-Fi &gt; IP address)
+                    <input type="text" id="watchIp" placeholder="for example 192.168.1.25"></label>
+                <button class="approve-button" id="watchGo" type="button">Open live view</button>
+            </div>
             <div class="live-grid" id="liveGrid"><p class="hint empty-note">Nobody is playing right now. When a student starts a map, they appear here.</p></div>
         </section>
 

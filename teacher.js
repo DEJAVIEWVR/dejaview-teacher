@@ -290,7 +290,7 @@ function renderLive() {
           ${key ? `<div class="l-key"><small>Key points of a good answer</small>${esc(key)}</div>` : ""}
           <div class="l-clocks"><div><small>Map time left</small><b>${x.mapLeft ? mmss(x.mapLeft) : "-"}</b></div>
             <div class="${x.phase === "answering" && x.answerLeft <= 10 ? "hot" : ""}"><small>Answer timer</small><b>${x.phase === "answering" ? x.answerLeft + "s" : "-"}</b></div></div>
-          <div class="pc-btns"><button class="add-button" data-act="evaluate" data-id="${x.id}">Evaluate</button></div></div>`;
+          <div class="pc-btns">${x.viewUrl && !stale ? `<a class="watch" href="${esc(x.viewUrl)}" target="_blank" rel="noopener">&#9658; Watch live (full screen)</a>` : ""}<button class="add-button" data-act="evaluate" data-id="${x.id}">Evaluate</button></div></div>`;
     }).join("");
 }
 
@@ -645,6 +645,17 @@ $("bell").addEventListener("click", () => {
     $("noteDialog").showModal();
 });
 $("noteClose").addEventListener("click", () => $("noteDialog").close());
+
+
+// manual "Watch live": type the tablet's address if the card has no Watch button
+try { $("watchIp").value = localStorage.getItem("dvWatchIp") || ""; } catch (e) {}
+$("watchGo").addEventListener("click", () => {
+    let v = $("watchIp").value.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+    if (!v) return toast("Type the tablet's IP address first, for example 192.168.1.25", "warn");
+    if (!v.includes(":")) v += ":8080";
+    try { localStorage.setItem("dvWatchIp", v); } catch (e) {}
+    window.open("http://" + v + "/", "_blank", "noopener");
+});
 
 $("pwBtn").addEventListener("click", changeMyPassword);
 
