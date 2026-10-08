@@ -116,6 +116,21 @@ service cloud.firestore {
       allow delete: if teachesSection(resource.data.section) || isAdmin();
     }
 
+    // ---------- live monitor (what the student is doing right now) ----------
+    // The VR app writes ONE small document per student (id = the student's uid). Teachers read their own sections.
+    match /live/{uid} {
+      allow create, update: if activeStudent() && request.auth.uid == uid
+                    && request.resource.data.keys().hasOnly(["uid","studentIdNumber","fullname","section","scene","level","destination","phase",
+                                                             "stopNumber","stopTotal","stopTitle","speaker","question","mapLeft","answerLeft",
+                                                             "x","z","yaw","updatedAt"])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.section == mySection()
+                    && request.resource.data.phase in ["menu","walking","reading","answering","finished","offline"]
+                    && request.resource.data.question.size() <= 600;
+      allow read: if signedIn() && (teachesSection(resource.data.section) || isAdmin());
+      allow delete: if signedIn() && (request.auth.uid == uid || teachesSection(resource.data.section) || isAdmin());
+    }
+
     // ---------- sections (public read: the register screen needs them before login) ----------
     match /sections/{id} {
       allow read: if true;

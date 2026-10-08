@@ -18,6 +18,7 @@
     </header>
     <nav>
         <a href="#home">Home</a>
+        <a href="#live">Live <span class="badge live" id="liveCount">0</span></a>
         <a href="#pending">Pending <span class="badge" id="pendingCount">0</span></a>
         <a href="#students">Student List</a>
         <a href="#performance">Student Records</a>
@@ -27,23 +28,35 @@
     <main>
         <section id="home">
             <h2>Welcome, Instructor</h2>
+            <p class="hint">Here is what needs your attention today.</p>
+            <div class="stat-grid" id="statGrid"></div>
             <div id="capBanner"></div>
+            <h3 class="sub-title">Your sections</h3>
             <div class="cap-grid" id="capGrid"></div>
-            <ol class="steps">
-                <li>Approve new students under <b>Pending</b>.</li>
-                <li>When it is a student's turn, press <b>Activate</b> in the <b>Student List</b>.</li>
-                <li>After they play, press <b>Evaluate</b> and enter the scores.</li>
-            </ol>
+            <h3 class="sub-title">How it works</h3>
+            <div class="step-grid">
+                <div class="step"><span>1</span><p>Approve new students under <b>Pending</b>.</p></div>
+                <div class="step"><span>2</span><p>When it is a student's turn, press <b>Activate</b> in the <b>Student List</b>.</p></div>
+                <div class="step"><span>3</span><p>After they play, press <b>Evaluate</b> and enter the scores.</p></div>
+            </div>
+        </section>
+
+        <section id="live">
+            <h2>Live Monitor</h2>
+            <p class="hint">See where the student is and what they are being asked, right now. It updates by itself every few seconds. Leave this page open on the laptop or the TV.</p>
+            <div class="live-grid" id="liveGrid"><p class="hint empty-note">Nobody is playing right now. When a student starts a map, they appear here.</p></div>
         </section>
 
         <section id="pending">
             <h2>Pending Approvals</h2>
             <p class="hint">Approve only students you recognize. Rejecting removes the registration record.</p>
-            <button class="approve-button" id="approveAll" data-act="approveAll" style="display:none">Approve all</button>
-            <div class="scroll-box short"><table>
-                <thead><tr><th>Student ID</th><th>Full Name</th><th>Waiting</th><th colspan="2">Actions</th></tr></thead>
-                <tbody id="pendingBody"><tr><td colspan="5">Loading...</td></tr></tbody>
-            </table></div>
+            <div class="toolbar">
+                <label>Section<select id="pendSection"></select></label>
+                <label class="grow">Search<input type="text" id="pendSearch" placeholder="Name, Student ID or username"></label>
+                <button class="approve-button" id="approveAll" data-act="approveAll" style="display:none">Approve all</button>
+            </div>
+            <p class="hint" id="pendCount"></p>
+            <div class="pend-grid" id="pendingBody"><p class="hint">Loading...</p></div>
         </section>
 
         <section id="students">
@@ -171,6 +184,26 @@
         </form>
     </dialog>
 
+    <script>
+    // Each menu item opens its own page. Only one section is shown at a time.
+    (function () {
+        var ids = ["home", "live", "pending", "students", "performance", "modules", "bank"];
+        function show() {
+            var id = (location.hash || "#home").slice(1);
+            if (ids.indexOf(id) < 0) id = "home";
+            ids.forEach(function (s) {
+                var el = document.getElementById(s);
+                if (el) el.classList.toggle("on", s === id);
+            });
+            document.querySelectorAll("nav a").forEach(function (a) {
+                a.classList.toggle("current", a.getAttribute("href") === "#" + id);
+            });
+            window.scrollTo(0, 0);
+        }
+        window.addEventListener("hashchange", show);
+        show();
+    })();
+    </script>
     <script type="module" src="teacher.js"></script>
     <script type="module" src="bank.js"></script>
     <script type="module" src="modules.js"></script>

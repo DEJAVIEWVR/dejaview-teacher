@@ -1,6 +1,6 @@
 import { auth, db, $, esc } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { collection, query, where, getDocs, getDoc, setDoc, doc, updateDoc, deleteDoc, Timestamp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { collection, query, where, getDocs, getDoc, setDoc, doc, updateDoc, deleteDoc, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { TERM_MONTHS, DESTS } from "./destinations.js";
 import { CRIT, printReport, printHtml } from "./report.js";
 import { toast, ask, choose, askText, busy, niceError } from "./toast.js";
@@ -57,8 +57,10 @@ onAuthStateChanged(auth, async user => {
     $("playMaps").innerHTML = mapOpts;
     $("playMinutes").innerHTML = minOpts(45);
     const opts = sortedSections().map(s => `<option>${esc(s)}</option>`).join("") + (sections.length > 1 ? '<option value="">All my sections</option>' : "");
-    $("sectionFilter").innerHTML = opts; $("recSection").innerHTML = opts;   // starts on the first section so long lists stay short
+    $("sectionFilter").innerHTML = opts; $("recSection").innerHTML = opts;
+    $("pendSection").innerHTML = '<option value="">All my sections</option>' + sortedSections().map(s => `<option>${esc(s)}</option>`).join("");   // Pending has its own filter   // starts on the first section so long lists stay short
     await load(true);
+    startLive();
     toast(`Welcome, ${me.name || "Instructor"}.`, "info");
     setInterval(() => load(false), 60000);   // refresh every minute: new registrations, finished maps, closing sessions
 });
@@ -66,7 +68,7 @@ onAuthStateChanged(auth, async user => {
 // ---------- loading ----------
 async function load(first) {
     if (!sections.length) {
-        $("pendingBody").innerHTML = empty(6, "No section assigned. Ask the admin.");
+        $("pendingBody").innerHTML = '<p class="hint">No section assigned. Ask the admin.</p>';
         $("studentTable").innerHTML = empty(7, "No section assigned. Ask the admin.");
         $("capGrid").innerHTML = '<p class="hint">No section assigned. Ask the admin to assign your sections.</p>';
         if (first) toast("No section is assigned to you yet. Ask the admin.", "warn");
@@ -196,7 +198,7 @@ function renderCap() {
 }
 
 // ---------- tables ----------
-function render() { renderCap(); renderStudents(); renderRecords(); updateBell(); }
+function render() { renderStats(); renderCap(); renderPending(); renderStudents(); renderRecords(); updateBell(); }
 
 function waiting(s) {
     const n = daysAgo(toDate(s.createdAt));
@@ -224,21 +226,101 @@ function grouped(list, cols, rowFn, emptyText, sortFn) {
     }).join("") || empty(cols, "No section selected.");
 }
 
+// ---------- home: quick numbers ----------
+function renderStats() {
+    const active = students.filter(s => s.status === "active");
+    const pend = students.filter(s => s.status === "pending").length;
+    const playing = new Set(sessions.filter(isOpen).map(s => s.studentUid).filter(Boolean)).size;
+    const grade = needGrading().length;
+    const tile = (n, label, cls, go) => `<a class="stat ${cls}" href="#${go}"><b>${n}</b><span>${label}</span></a>`;
+    $("statGrid").innerHTML =
+        tile(active.length, "Active students", "", "students") +
+        tile(pend, "Waiting for approval", pend ? "hot" : "", "pending") +
+        tile(playing, "Playing now", playing ? "ok" : "", "students") +
+        tile(grade, "Waiting for evaluation", grade ? "hot" : "", "performance");
+}
+
+// ---------- live monitor (what the student is doing right now) ----------
+let liveDocs = [], bankQs = null, liveTimer = null;
+const PHASE = {
+    menu: ["Choosing a map", ""], walking: ["Walking to the next stop", "walk"], reading: ["Reading the history", "read"],
+    answering: ["ANSWERING OUT LOUD", "answer"], finished: ["Finished the map", "done"], offline: ["Phone went to sleep / left the app", "off"]
+};
+const mmss = s => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
+
+async function loadBank() {
+    if (bankQs) return;
+    try { bankQs = (await getDocs(collection(db, "Scenarios_tbl"))).docs.map(d => d.data()); } catch (e) { bankQs = []; }
+}
+const keyPointsFor = qText => {
+    const n = String(qText || "").toLowerCase();
+    if (!n || !bankQs) return "";
+    const hit = bankQs.find(x => x.questionText && x.keyPoints && (n.includes(String(x.questionText).toLowerCase().trim())));
+    return hit ? hit.keyPoints : "";
+};
+
+function startLive() {
+    if (!sections.length || startLive.on) return;
+    startLive.on = true;
+    loadBank().then(renderLive);
+    onSnapshot(query(collection(db, "live"), where("section", "in", sections)), snap => {
+        liveDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderLive();
+    }, err => { console.error(err); toast("Live monitor cannot load. Publish the new firestore.rules.", "warn"); });
+    liveTimer = setInterval(renderLive, 5000);   // re-check "is this phone still sending?"
+}
+
+function renderLive() {
+    const now = Date.now();
+    const fresh = liveDocs.filter(x => { const d = toDate(x.updatedAt); return d && now - d < 20000 && x.phase !== "offline"; });
+    $("liveCount").textContent = fresh.length;
+    $("liveCount").classList.toggle("on", fresh.length > 0);
+    const list = liveDocs.filter(x => { const d = toDate(x.updatedAt); return d && now - d < 120000; });   // show for 2 more minutes as "no signal"
+    if (!list.length) { $("liveGrid").innerHTML = '<p class="hint empty-note">Nobody is playing right now. When a student starts a map, they appear here.</p>'; return; }
+    $("liveGrid").innerHTML = list.sort(sortName).map(x => {
+        const d = toDate(x.updatedAt), age = Math.round((now - d) / 1000), stale = age > 20 || x.phase === "offline";
+        const [label, cls] = PHASE[x.phase] || [x.phase, ""];
+        const asking = x.phase === "answering" || x.phase === "walking" || x.phase === "reading";
+        const key = asking ? keyPointsFor(x.question) : "";
+        return `<div class="lcard ${stale ? "stale" : cls}">
+          <div class="l-head"><div><b>${esc(x.fullname)}</b><small>${esc(x.studentIdNumber)} &middot; ${esc(x.section)}</small></div>
+            <span class="l-state">${stale ? "No signal (" + age + "s)" : label}</span></div>
+          <div class="l-where">${x.destination ? `<b>${esc(x.destination)}</b>` : "Not in a map yet"}${x.stopTotal ? ` &middot; Stop ${x.stopNumber} of ${x.stopTotal}` : ""}${x.stopTitle ? ` &middot; ${esc(x.stopTitle)}` : ""}</div>
+          ${x.question && asking ? `<div class="l-q"><small>${esc(x.speaker || "Question")} asks:</small>${esc(x.question)}</div>` : ""}
+          ${key ? `<div class="l-key"><small>Key points of a good answer</small>${esc(key)}</div>` : ""}
+          <div class="l-clocks"><div><small>Map time left</small><b>${x.mapLeft ? mmss(x.mapLeft) : "-"}</b></div>
+            <div class="${x.phase === "answering" && x.answerLeft <= 10 ? "hot" : ""}"><small>Answer timer</small><b>${x.phase === "answering" ? x.answerLeft + "s" : "-"}</b></div></div>
+          <div class="pc-btns"><button class="add-button" data-act="evaluate" data-id="${x.id}">Evaluate</button></div></div>`;
+    }).join("");
+}
+
+// ---------- pending approvals (its own page, its own section dropdown + search) ----------
+function renderPending() {
+    const allPending = students.filter(s => s.status === "pending");
+    $("pendingCount").textContent = allPending.length;
+    $("approveAll").style.display = allPending.length > 1 ? "" : "none";
+
+    const only = $("pendSection").value, q = $("pendSearch").value.toLowerCase().trim();
+    const match = s => !q || [s.studentIdNumber, s.fullname, s.username].join(" ").toLowerCase().includes(q);
+    const shown = allPending.filter(s => (!only || s.section === only) && match(s));
+    $("pendCount").textContent = allPending.length
+        ? `Showing ${shown.length} of ${allPending.length} waiting${only ? " in " + only : ""}.` : "";
+
+    const ini = n => (n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+    $("pendingBody").innerHTML = sortedSections().filter(sec => !only || sec === only).map(sec => {
+        const rows = shown.filter(s => s.section === sec).sort(sortName);
+        return rows.length ? `<h3 class="sec-title">${esc(sec)} <small>${rows.length} waiting</small></h3>` + rows.map(s =>
+            `<div class="pcard"><div class="pc-top"><div class="avatar">${esc(ini(s.fullname))}</div>
+               <div class="pc-info"><b>${esc(s.fullname)}</b><small>${esc(s.studentIdNumber)}</small><small>${esc(s.username || "")}</small></div>${waiting(s)}</div>
+             <div class="pc-btns"><button class="approve-button" data-act="approve" data-id="${s.id}">Approve</button>
+             <button class="delete-button" data-act="reject" data-id="${s.id}">Reject</button></div></div>`).join("") : "";
+    }).join("") || `<p class="hint empty-note">${allPending.length ? "No pending student matches your search or section." : "No pending registrations" + (only ? " in " + only : "") + ". You are all caught up."}</p>`;
+}
+
 function renderStudents() {
     const q = $("searchStudent").value.toLowerCase().trim();
     const match = s => [s.studentIdNumber, s.fullname, s.username, s.section].join(" ").toLowerCase().includes(q);
-    const pendAll = students.filter(s => s.status === "pending" && match(s));
-    $("pendingCount").textContent = students.filter(s => s.status === "pending").length;
-    $("approveAll").style.display = students.filter(s => s.status === "pending").length > 1 ? "" : "none";
-
     const only = $("sectionFilter").value;
-    $("pendingBody").innerHTML = sortedSections().filter(sec => !only || sec === only).map(sec => {
-        const rows = pendAll.filter(s => s.section === sec).sort(sortName);
-        return rows.length ? secRow(5, sec, `${rows.length} waiting`) + rows.map(s =>
-            `<tr><td>${esc(s.studentIdNumber)}</td><td>${esc(s.fullname)}<br><small class="hint">${esc(s.username || "")}</small></td><td>${waiting(s)}</td>
-             <td colspan="2"><button class="approve-button" data-act="approve" data-id="${s.id}">Approve</button>
-             <button class="delete-button" data-act="reject" data-id="${s.id}">Reject</button></td></tr>`).join("") : "";
-    }).join("") || empty(5, "No pending registrations" + (only ? " in " + only : "") + ".");
 
     const sortFn = sorter($("sortBy").value), show = $("showFilter").value;
     const inScope = list => list.filter(s => !only || s.section === only);
@@ -548,6 +630,8 @@ $("studentView").addEventListener("change", () => { view = $("studentView").valu
 ["sectionFilter", "showFilter", "sortBy"].forEach(id => $(id).addEventListener("change", renderStudents));
 ["recSection", "recShow", "recSort"].forEach(id => $(id).addEventListener("change", renderRecords));
 $("recSearch").addEventListener("input", renderRecords);
+$("pendSection").addEventListener("change", renderPending);
+$("pendSearch").addEventListener("input", renderPending);
 $("searchStudent").addEventListener("input", renderStudents);
 $("remindOk").addEventListener("click", () => $("remindDialog").close());
 window.addEventListener("beforeunload", e => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
