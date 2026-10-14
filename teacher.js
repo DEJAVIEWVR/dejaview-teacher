@@ -526,7 +526,7 @@ function sheetFor(sec, today) {
         return `<tr><td>${n + 1}</td><td>${esc(s.studentIdNumber)}</td><td style="text-align:left">${esc(s.fullname)}</td>${es.map(e => `<td>${e ? (+e.total).toFixed(1) : "-"}</td>`).join("")}<td><b>${avg == null ? "-" : avg.toFixed(1)}</b></td></tr>`;
     }).join("");
     return `<div class="pr-sec"><div class="pr-head"><img class="pr-logo" src="images/bulsu-seal.png" alt="BulSU seal"><img class="pr-logo" src="images/htm-logo.png" alt="HTM logo" onerror="this.style.display='none'"><div><strong>Bulacan State University &middot; Sarmiento Campus</strong><br>
-      Department of Hospitality and Tourism Management<br><span class="pr-title">DejaView VR &ndash; Class Score Sheet</span></div></div>
+      Department of Tourism Management<br><span class="pr-title">DejaView VR &ndash; Class Score Sheet</span></div></div>
       <table class="pr-info"><tr><td>Section</td><td>${esc(sec)}</td><td>Instructor</td><td>${esc(me.name || "")}</td></tr><tr><td>Students</td><td>${list.length}</td><td>Date printed</td><td>${esc(today)}</td></tr></table>
       <table class="pr-table pr-class"><thead><tr><th>#</th><th>Student ID</th><th>Name</th>${DESTS.map((d, i) => `<th>Map ${i + 1}<small>${esc(d)}<br>(100)</small></th>`).join("")}<th>Average</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="pr-sign"><div><span></span>Instructor: ${esc(me.name || "")}</div><div><span></span>Noted by: ${esc(head.headName || "")}<br><small>${esc(head.headTitle || "")}</small></div></div></div>`;

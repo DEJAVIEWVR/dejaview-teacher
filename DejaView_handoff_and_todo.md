@@ -12,7 +12,7 @@ they are the FIRST group. Priority is a stable demo, not more features. Be hones
 ## 1. Project context
 
 - Unity 2022.3.44 Android mobile VR tour-guide game (phone in Cardboard headset, Bluetooth controller, gaze + buttons).
-- Bulacan State University (BulSU) Sarmiento Campus, Dept. of Hospitality and Tourism Management. Colors maroon #a50012, gold #f6a829.
+- Bulacan State University (BulSU) Sarmiento Campus, Dept. of Tourism Management. Colors maroon #a50012, gold #f6a829.
 - 3 levels: 1 Our Lady of Lourdes Grotto (scenes LEVEL1(GROTTO) then INSIDEGROTTO), 2 Mt. Balagbag (LEVEL2_MTBALAGBAG), 3 Padre Pio.
   Kaytitinga Falls was REMOVED. Map scene: START_SCENE. Login scene: StudentLoginScene.
 - Firebase project: dejaview-vr-tour (Firestore + Auth, Email/Password enabled). Student ID becomes the Auth email <id>@dejaview.app.

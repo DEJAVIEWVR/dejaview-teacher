@@ -96,7 +96,7 @@ $("printQ").addEventListener("click", () => {
     }).join("");
     toast("Choose \"Save as PDF\" in the print window.", "info");
     printHtml(`<div class="pr-head"><img src="images/htm-logo.png" onerror="this.onerror=null;this.src='images/bulsu-seal.png'" alt=""><div><strong>Bulacan State University &middot; Sarmiento Campus</strong><br>
-        Department of Hospitality and Tourism Management<br><span class="pr-title">DejaView VR &ndash; Instructor Question Sheet</span></div></div>
+        Department of Tourism Management<br><span class="pr-title">DejaView VR &ndash; Instructor Question Sheet</span></div></div>
         <p>Date printed: ${esc(today)}. Each question is answered out loud in 30 seconds. Score Knowledge against the key points.</p>${body}`, "DejaView Question Sheet");
 });
 

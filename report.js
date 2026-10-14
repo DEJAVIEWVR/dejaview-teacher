@@ -48,7 +48,7 @@ export function printReport({ name, id, section, instructor, rows }) {
     area.innerHTML = `
       <div class="pr-head"><img class="pr-logo" src="images/bulsu-seal.png" alt="BulSU seal"><img class="pr-logo" src="images/htm-logo.png" alt="HTM logo" onerror="this.style.display='none'">
         <div><strong>Bulacan State University &middot; Sarmiento Campus</strong><br>
-        Department of Hospitality and Tourism Management<br>
+        Department of Tourism Management<br>
         <span class="pr-title">DejaView VR &ndash; Student Performance Report</span></div></div>
       <table class="pr-info">
         <tr><td>Student</td><td>${esc(name)}</td><td>Student ID</td><td>${esc(id)}</td></tr>
