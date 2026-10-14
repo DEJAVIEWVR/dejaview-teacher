@@ -1,13 +1,38 @@
-import { esc } from "./firebase.js";
+import { esc, db } from "./firebase.js";
+import { getDoc, doc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-// The 5 criteria and their maximum points (total 100)
-export const CRIT = [
-    ["knowledge", "Knowledge", 35],
-    ["timeMgmt", "Time Management", 20],
-    ["navigation", "Navigation", 20],
-    ["problemSolving", "Problem-Solving", 15],
-    ["completion", "Completion", 10]
+// The grading criteria: [key, label, max points]. The admin can rename, add and remove them (saved in settings/criteria).
+// The list always adds up to 100 points. CRIT is updated in place, so every page that reads it sees the new rubric.
+export const DEFAULT_CRIT = [
+    ["content", "Content Accuracy", 25],
+    ["delivery", "Delivery & Communication", 20],
+    ["navigation", "Tour Sequence & Navigation", 15],
+    ["timeMgmt", "Time Management", 15],
+    ["problemSolving", "Problem-Solving & Tourist Handling", 15],
+    ["language", "Language Proficiency", 10]
 ];
+export const CRIT = DEFAULT_CRIT.map(r => r.slice());
+// Older evaluations were saved with these five fixed criteria
+const LEGACY = [["knowledge", "Knowledge", 35], ["timeMgmt", "Time Management", 20], ["navigation", "Navigation", 20], ["problemSolving", "Problem-Solving", 15], ["completion", "Completion", 10]];
+
+export function applyCriteria(d) {
+    const items = d && Array.isArray(d.items) && d.items.length ? d.items.map(i => [i.key, i.label, i.max]) : DEFAULT_CRIT;
+    CRIT.length = 0;
+    items.forEach(r => CRIT.push(r.slice()));
+}
+export async function loadCriteria() {
+    try { const s = await getDoc(doc(db, "settings", "criteria")); applyCriteria(s.exists() ? s.data() : null); }
+    catch (err) { console.warn("Using the default criteria.", err); }
+}
+// The score of one criterion in an evaluation ("" when it was not entered)
+export const scoreRaw = (e, k) => { const v = e && ((e.scores && e.scores[k] != null) ? e.scores[k] : e[k]); return v == null ? "" : v; };
+// Each evaluation remembers the rubric it was graded with, so old results always show the right maximums
+export function rubricOf(e) {
+    if (e && Array.isArray(e.rubric) && e.rubric.length) return e.rubric.map(i => [i.key, i.label, i.max]);
+    if (e && e.knowledge !== undefined) return LEGACY;
+    return CRIT;
+}
+export const rubricFor = list => rubricOf((list || []).find(Boolean));
 
 // Opens the browser print window with a clean report. Choose "Save as PDF" as the destination.
 export function printReport({ name, id, section, instructor, rows }) {
@@ -16,11 +41,12 @@ export function printReport({ name, id, section, instructor, rows }) {
 
     const sorted = rows.slice().sort((a, b) => (a.level || 0) - (b.level || 0));
     const avg = sorted.length ? sorted.reduce((n, r) => n + (+r.total || 0), 0) / sorted.length : 0;
+    const rub = rubricFor(sorted);
     const fmt = v => (v == null || v === "") ? "-" : (+v).toFixed(1);
     const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
     area.innerHTML = `
-      <div class="pr-head"><img src="images/htm-logo.png" onerror="this.onerror=null;this.src='images/bulsu-seal.png'" alt="">
+      <div class="pr-head"><img class="pr-logo" src="images/bulsu-seal.png" alt="BulSU seal"><img class="pr-logo" src="images/htm-logo.png" alt="HTM logo" onerror="this.style.display='none'">
         <div><strong>Bulacan State University &middot; Sarmiento Campus</strong><br>
         Department of Hospitality and Tourism Management<br>
         <span class="pr-title">DejaView VR &ndash; Student Performance Report</span></div></div>
@@ -28,10 +54,11 @@ export function printReport({ name, id, section, instructor, rows }) {
         <tr><td>Student</td><td>${esc(name)}</td><td>Student ID</td><td>${esc(id)}</td></tr>
         <tr><td>Section</td><td>${esc(section)}</td><td>Date printed</td><td>${esc(today)}</td></tr>
       </table>
-      <table class="pr-table"><thead><tr><th>Destination</th>${CRIT.map(([, l, m]) => `<th>${l} (${m})</th>`).join("")}<th>Total</th></tr></thead><tbody>
-      ${sorted.map(r => `<tr><td>${esc(r.destination)}</td>${CRIT.map(([k]) => `<td>${fmt(r[k])}</td>`).join("")}<td><b>${fmt(r.total)}</b></td></tr>
-        ${r.remarks ? `<tr class="pr-rem"><td colspan="7">Remarks: ${esc(r.remarks)}</td></tr>` : ""}`).join("")}
+      <table class="pr-table pr-crit"><thead><tr><th>Criteria</th>${sorted.map(r => `<th>${esc(r.destination)}</th>`).join("")}</tr></thead><tbody>
+      ${rub.map(([k, l, m]) => `<tr><td>${esc(l)} <small>(max ${m})</small></td>${sorted.map(r => `<td>${fmt(scoreRaw(r, k))}</td>`).join("")}</tr>`).join("")}
+      <tr class="pr-total"><td>Total <small>(of 100)</small></td>${sorted.map(r => `<td><b>${fmt(r.total)}</b></td>`).join("")}</tr>
       </tbody></table>
+      ${sorted.some(r => r.remarks) ? `<div class="pr-remarks"><b>Remarks</b>${sorted.filter(r => r.remarks).map(r => `<div class="pr-rem-item"><strong>${esc(r.destination)}</strong><p>${esc(r.remarks)}</p></div>`).join("")}</div>` : ""}
       <p class="pr-sum">Levels evaluated: ${sorted.length} &middot; Average total: ${avg.toFixed(1)} / 100</p>
       <div class="pr-sign"><div><span></span>Instructor: ${esc(instructor || "")}</div><div><span></span>Date</div></div>`;
 
@@ -56,5 +83,8 @@ function openPrint(title) {
         window.removeEventListener("afterprint", done);
     };
     window.addEventListener("afterprint", done);
-    window.print();
+    // Wait until the logos are loaded, or they print as empty boxes
+    const imgs = [...document.querySelectorAll("#printArea img")].filter(i => !i.complete);
+    const ready = Promise.all(imgs.map(i => new Promise(res => { i.addEventListener("load", res); i.addEventListener("error", res); })));
+    Promise.race([ready, new Promise(res => setTimeout(res, 2000))]).then(() => setTimeout(() => window.print(), 60));
 }

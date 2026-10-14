@@ -5,23 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DejaView - Instructor Dashboard</title>
     <style>body { visibility: hidden; }</style>
-    <link rel="stylesheet" href="dejaview.css?v=20261008b">
+    <link rel="stylesheet" href="dejaview.css?v=20261014d">
 </head>
-<body>
+<body class="paged">
     <header>
         <img src="images/htm-logo.png" onerror="this.onerror=null;this.src='images/bulsu-seal.png'" alt="Department logo">
         <h1>DejaView</h1>
-        <p id="who">Loading...</p>
-        <button id="bell" class="bell" title="Notifications">&#128276;<span class="dot" id="bellDot" style="display:none">0</span></button>
-        <button id="pwBtn" class="logout-button" style="background:rgba(255,255,255,.2);color:#fff">Change password</button>
-        <button id="logoutButton" class="logout-button">Logout</button>
+        <div class="hdr-right">
+            <button id="bell" class="bell" title="Notifications">&#128276;<span class="dot" id="bellDot" style="display:none">0</span></button>
+            <div class="prof">
+                <button id="avatarBtn" class="prof-btn" type="button" aria-haspopup="true" aria-expanded="false" title="Your profile">
+                    <span class="avatar" id="avatarTxt">I</span>
+                    <span class="prof-name" id="whoShort">Instructor</span>
+                    <span class="caret">▾</span>
+                </button>
+                <div id="profMenu" class="prof-menu" hidden>
+                    <div class="prof-top">
+                        <span class="avatar big" id="avatarTxt2">I</span>
+                        <div><b id="whoName">Loading...</b><span id="who"></span></div>
+                    </div>
+                    <button id="pwBtn" type="button">🔑 Change password</button>
+                    <button id="logoutButton" type="button" class="out">⎋ Logout</button>
+                </div>
+            </div>
+        </div>
     </header>
     <nav>
         <a href="#home">Home</a>
         <a href="#live">Live <span class="badge live" id="liveCount">0</span></a>
         <a href="#pending">Pending <span class="badge" id="pendingCount">0</span></a>
         <a href="#students">Student List</a>
-        <a href="#performance">Student Records</a>
         <a href="#modules">Training Modules</a>
         <a href="#bank">Question Bank</a>
     </nav>
@@ -30,14 +43,13 @@
             <h2>Welcome, Instructor</h2>
             <p class="hint">Here is what needs your attention today.</p>
             <div class="stat-grid" id="statGrid"></div>
-            <div id="capBanner"></div>
             <h3 class="sub-title">Your sections</h3>
             <div class="cap-grid" id="capGrid"></div>
             <h3 class="sub-title">How it works</h3>
             <div class="step-grid">
                 <div class="step"><span>1</span><p>Approve new students under <b>Pending</b>.</p></div>
                 <div class="step"><span>2</span><p>When it is a student's turn, press <b>Activate</b> in the <b>Student List</b>.</p></div>
-                <div class="step"><span>3</span><p>After they play, press <b>Evaluate</b> and enter the scores.</p></div>
+                <div class="step"><span>3</span><p>After they play, press <b>Evaluate</b> and enter the scores. All scores stay in the same <b>Student List</b>.</p></div>
             </div>
         </section>
 
@@ -70,11 +82,13 @@
                 <label>Section<select id="sectionFilter"></select></label>
                 <label>Show<select id="showFilter">
                     <option value="all">Everyone</option><option value="active">Activated now</option>
-                    <option value="inactive">Not activated</option><option value="grade">Waiting for evaluation</option></select></label>
+                    <option value="inactive">Not activated</option><option value="grade">Waiting for evaluation</option>
+                    <option value="none">No scores yet</option><option value="draft">Has draft scores</option><option value="released">All scores released</option></select></label>
                 <label>Sort by<select id="sortBy">
-                    <option value="name">Name (A to Z)</option><option value="id">Student ID</option><option value="maps">Maps finished</option></select></label>
+                    <option value="name">Name (A to Z)</option><option value="id">Student ID</option><option value="maps">Maps finished</option><option value="avg">Average (high to low)</option></select></label>
                 <label>List<select id="studentView"><option value="active">Current students</option><option value="archived">Past semesters (archived)</option></select></label>
                 <label class="grow">Search<input type="text" id="searchStudent" placeholder="Name or Student ID"></label>
+                <button class="edit-button" id="printClass" type="button">Print score sheet (PDF)</button>
             </div>
             <div class="toolbar sub">
                 <span class="hint">Activate for:</span> <select id="playMaps"></select> <select id="playMinutes"></select>
@@ -84,28 +98,6 @@
             <div class="scroll-box"><table>
                 <thead id="studentHead"></thead>
                 <tbody id="studentTable"><tr><td colspan="5">Loading...</td></tr></tbody>
-            </table></div>
-        </section>
-
-        <section id="performance">
-            <h2>Student Records</h2>
-            <p class="hint">Scores of each student. To enter or change scores, press <b>Evaluate</b> in the Student List. Press <b>View</b> for the full breakdown.</p>
-            <div class="toolbar">
-                <label>Section<select id="recSection"></select></label>
-                <label>Show<select id="recShow">
-                    <option value="all">Everyone</option><option value="none">Not graded yet</option>
-                    <option value="draft">Has draft scores</option><option value="released">All released</option></select></label>
-                <label>Sort by<select id="recSort">
-                    <option value="name">Name (A to Z)</option><option value="id">Student ID</option><option value="avg">Average (high to low)</option></select></label>
-                <label class="grow">Search<input type="text" id="recSearch" placeholder="Name or Student ID"></label>
-                <button class="add-button" id="printClass">Print class score sheet (PDF)</button>
-            </div>
-            <p class="hint" id="recCount"></p>
-            <div class="scroll-box"><table>
-                <thead><tr><th>Student ID</th><th>Name</th>
-                    <th>Map 1<br><small>Grotto</small></th><th>Map 2<br><small>Mt. Balagbag</small></th><th>Map 3<br><small>Padre Pio</small></th>
-                    <th>Average</th><th>Released</th><th></th></tr></thead>
-                <tbody id="recBody"><tr><td colspan="8">Loading...</td></tr></tbody>
             </table></div>
         </section>
 
@@ -137,8 +129,10 @@
     <dialog id="evalDialog" class="wide">
         <h2 id="evalTitle">Evaluate</h2>
         <p class="hint" id="evalSub"></p>
-        <p class="hint">Enter the score for each criterion. Maximums: Knowledge 35, Time 20, Navigation 20, Problem-solving 15, Completion 10 (100 per map). Save draft keeps it hidden; Submit &amp; release shows it to the student.</p>
-        <div class="student-table-container"><table><thead id="evalHead"></thead><tbody id="evalBody"></tbody></table></div>
+        <p class="hint">Enter the score for each criterion. The maximum is shown in each column title (100 per map in total). Write your remarks at the bottom. Save draft keeps it hidden; Submit &amp; release shows it to the student.</p>
+        <div class="student-table-container"><table class="eval-table"><thead id="evalHead"></thead><tbody id="evalBody"></tbody></table></div>
+        <h3 class="sub-title">Remarks</h3>
+        <div id="evalRemarks" class="rem-grid"></div>
         <div class="row"><button type="button" class="delete-button" id="evalCancel">Cancel</button>
             <button type="button" class="edit-button" id="evalSave">Save draft</button>
             <button type="button" class="add-button" id="evalSubmit">Submit &amp; release</button></div>
@@ -147,7 +141,9 @@
     <dialog id="viewDialog" class="wide">
         <h2 id="viewTitle">Student</h2>
         <p class="hint" id="viewSub"></p>
-        <div class="student-table-container"><table><thead id="viewHead"></thead><tbody id="viewBody"></tbody></table></div>
+        <div class="student-table-container"><table class="eval-table"><thead id="viewHead"></thead><tbody id="viewBody"></tbody></table></div>
+        <h3 class="sub-title">Remarks</h3>
+        <div id="viewRemarks"></div>
         <div class="row"><button type="button" class="edit-button" id="viewPrint">Print / Save as PDF</button><button type="button" class="add-button" id="viewClose">Close</button></div>
     </dialog>
 
@@ -166,12 +162,74 @@
     <dialog id="mDialog">
         <form id="mForm">
             <h2 id="mTitleHead">Add module</h2>
-            <label for="mTitle">Title</label>
-            <input id="mTitle" maxlength="120" required>
-            <label for="mContent">Content / lesson notes</label>
+            <div class="seg" id="mKindSeg">
+                <button type="button" data-kind="lesson" class="on">Lesson</button>
+                <button type="button" data-kind="stop">Game history</button>
+            </div>
+            <input type="hidden" id="mKind" value="lesson">
+            <div id="mTitleRow">
+                <label for="mTitle">Title</label>
+                <input id="mTitle" maxlength="120">
+            </div>
+            <div id="mStopRow" hidden>
+                <label for="mStopSel">Stop</label>
+                <select id="mStopSel" class="pick"></select>
+                <input id="mStop" maxlength="80" placeholder="Type the stop name" autocomplete="off" hidden>
+            </div>
+            <label for="mContent" id="mContentLabel">Lesson notes</label>
             <textarea id="mContent" rows="6" maxlength="5000" required></textarea>
-            <label for="mLink">Link (optional: Google Drive, YouTube, PDF)</label>
-            <input id="mLink" type="url" placeholder="https://">
+            <p class="hint" id="mContentHint" hidden>New paragraph = new screen in the game.</p>
+            <div id="mImgBox" hidden>
+                <label>Photos (up to 4)</label>
+                <div class="img-slot" id="mSlot0">
+                    <div class="img-prev" id="mImgPrev0"><span>Drop photo</span></div>
+                    <div class="img-fields">
+                        <input id="mImgUrl0" placeholder="Or paste a photo link">
+                        <input id="mImgCap0" maxlength="120" placeholder="Caption">
+                        <div class="img-btns">
+                            <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile0" hidden></label>
+                            <button type="button" class="delete-button" data-clear="0">Remove</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="img-slot" id="mSlot1">
+                    <div class="img-prev" id="mImgPrev1"><span>Drop photo</span></div>
+                    <div class="img-fields">
+                        <input id="mImgUrl1" placeholder="Or paste a photo link">
+                        <input id="mImgCap1" maxlength="120" placeholder="Caption">
+                        <div class="img-btns">
+                            <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile1" hidden></label>
+                            <button type="button" class="delete-button" data-clear="1">Remove</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="img-slot" id="mSlot2">
+                    <div class="img-prev" id="mImgPrev2"><span>Drop photo</span></div>
+                    <div class="img-fields">
+                        <input id="mImgUrl2" placeholder="Or paste a photo link">
+                        <input id="mImgCap2" maxlength="120" placeholder="Caption">
+                        <div class="img-btns">
+                            <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile2" hidden></label>
+                            <button type="button" class="delete-button" data-clear="2">Remove</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="img-slot" id="mSlot3">
+                    <div class="img-prev" id="mImgPrev3"><span>Drop photo</span></div>
+                    <div class="img-fields">
+                        <input id="mImgUrl3" placeholder="Or paste a photo link">
+                        <input id="mImgCap3" maxlength="120" placeholder="Caption">
+                        <div class="img-btns">
+                            <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile3" hidden></label>
+                            <button type="button" class="delete-button" data-clear="3">Remove</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="mLinkRow">
+                <label for="mLink">Link (optional)</label>
+                <input id="mLink" type="url" placeholder="https://">
+            </div>
             <div class="row"><button type="button" class="delete-button" id="mCancel">Cancel</button><button type="submit" class="add-button" id="mSave">Save</button></div>
         </form>
     </dialog>
@@ -192,7 +250,7 @@
     <script>
     // Each menu item opens its own page. Only one section is shown at a time.
     (function () {
-        var ids = ["home", "live", "pending", "students", "performance", "modules", "bank"];
+        var ids = ["home", "live", "pending", "students", "modules", "bank"];
         function show() {
             var id = (location.hash || "#home").slice(1);
             if (ids.indexOf(id) < 0) id = "home";
@@ -209,8 +267,8 @@
         show();
     })();
     </script>
-    <script type="module" src="teacher.js?v=20261008b"></script>
-    <script type="module" src="bank.js?v=20261008b"></script>
-    <script type="module" src="modules.js?v=20261008b"></script>
+    <script type="module" src="teacher.js?v=20261011q"></script>
+    <script type="module" src="bank.js?v=20261011q"></script>
+    <script type="module" src="modules.js?v=20261011q"></script>
 </body>
 </html>

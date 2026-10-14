@@ -5,7 +5,8 @@ service cloud.firestore {
     // ---------- who is who ----------
     function signedIn() { return request.auth != null; }
     function isAdmin() { return signedIn() && exists(/databases/$(db)/documents/admins/$(request.auth.uid)); }
-    function isTeacher() { return signedIn() && exists(/databases/$(db)/documents/teachers/$(request.auth.uid)); }
+    function isTeacher() { return signedIn() && exists(/databases/$(db)/documents/teachers/$(request.auth.uid))
+      && get(/databases/$(db)/documents/teachers/$(request.auth.uid)).data.get("archived", false) != true; }
     function teachesSection(sec) {
       return isTeacher() && sec in get(/databases/$(db)/documents/teachers/$(request.auth.uid)).data.sections;
     }
@@ -70,17 +71,13 @@ service cloud.firestore {
     // ---------- teacher-entered grades ----------
     function validEval(d, id) {
       return d.keys().hasOnly(["uid","studentIdNumber","fullname","section","level","destination","remarks","status",
-                               "evaluatorUid","evaluatorName","updatedAt","submittedAt",
-                               "knowledge","timeMgmt","navigation","problemSolving","completion","total"])
+                               "evaluatorUid","evaluatorName","updatedAt","submittedAt","scores","rubric","total"])
         && d.uid is string && d.section is string
         && d.level is int && d.level >= 1 && d.level <= 3
         && id == d.uid + "_L" + string(d.level)
         && d.status in ["draft","submitted"]
-        && d.knowledge is number && d.knowledge >= 0 && d.knowledge <= 35
-        && d.timeMgmt is number && d.timeMgmt >= 0 && d.timeMgmt <= 20
-        && d.navigation is number && d.navigation >= 0 && d.navigation <= 20
-        && d.problemSolving is number && d.problemSolving >= 0 && d.problemSolving <= 15
-        && d.completion is number && d.completion >= 0 && d.completion <= 10
+        && d.scores is map && d.scores.size() >= 1 && d.scores.size() <= 10
+        && d.rubric is list && d.rubric.size() == d.scores.size()
         && d.total is number && d.total >= 0 && d.total <= 100
         && (!("remarks" in d) || (d.remarks is string && d.remarks.size() <= 200))
         && d.evaluatorUid == request.auth.uid
@@ -145,6 +142,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---------- grading criteria: a list of {key,label,max}, set by the admin (the maximums add up to 100, checked on the page) ----------
+    match /settings/criteria {
+      allow read: if signedIn();
+      allow create, update: if isAdmin()
+                    && request.resource.data.keys().hasOnly(["items"])
+                    && request.resource.data.items is list
+                    && request.resource.data.items.size() >= 1 && request.resource.data.items.size() <= 10;
+      allow delete: if false;
+    }
+
     // ---------- site settings (name and title shown in the admin header) ----------
     match /settings/{id} {
       allow read: if signedIn();
@@ -160,12 +167,13 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
       // Employee ID must be exactly 10 digits (older teacher records are allowed to keep theirs until re-created)
       allow create, update: if isAdmin()
-                    && request.resource.data.keys().hasOnly(["name","employeeId","email","sections"])
+                    && request.resource.data.keys().hasOnly(["name","employeeId","email","sections","archived"])
                     && (request.resource.data.employeeId.matches("^[0-9]{10}$")
                         || (resource != null && request.resource.data.employeeId == resource.data.employeeId))
                     && request.resource.data.name is string && request.resource.data.name.size() >= 2
-                    && request.resource.data.sections is list && request.resource.data.sections.size() <= 30;
-      allow delete: if isAdmin();
+                    && request.resource.data.sections is list && request.resource.data.sections.size() <= 30
+                    && (!("archived" in request.resource.data) || request.resource.data.archived is bool);
+      allow delete: if false;          // teachers are archived, never deleted
     }
     match /admins/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;

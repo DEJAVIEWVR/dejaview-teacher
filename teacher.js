@@ -2,7 +2,7 @@ import { auth, db, $, esc } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { collection, query, where, getDocs, getDoc, setDoc, doc, updateDoc, deleteDoc, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { TERM_MONTHS, DESTS } from "./destinations.js";
-import { CRIT, printReport, printHtml } from "./report.js";
+import { CRIT, printReport, printHtml, loadCriteria, scoreRaw, rubricFor } from "./report.js";
 import { toast, ask, choose, askText, busy, niceError } from "./toast.js";
 import { changeMyPassword } from "./account.js";
 
@@ -36,6 +36,17 @@ const levelsOf = v => v === "all" ? ALL : [+v];
 const SAFE = async (btn, fn) => busy(btn, async () => { try { await fn(); } catch (err) { console.error(err); toast("Action failed. " + niceError(err), "err"); } });
 const secRow = (n, sec, text) => `<tr class="sec-row"><td colspan="${n}">${esc(sec)} <small>${text}</small></td></tr>`;
 
+function initials(n) {
+    const w = String(n || "").replace(/\b(dr|prof|engr|mr|mrs|ms|atty)\.?\s/gi, "").trim().split(/\s+/).filter(Boolean);
+    return ((w[0] || "I")[0] + (w.length > 1 ? w[w.length - 1][0] : "")).toUpperCase();
+}
+const menu = $("profMenu"), avBtn = $("avatarBtn");
+const setMenu = open => { menu.hidden = !open; avBtn.setAttribute("aria-expanded", String(open)); };
+avBtn.addEventListener("click", e => { e.stopPropagation(); setMenu(menu.hidden); });
+document.addEventListener("click", e => { if (!menu.hidden && !e.target.closest(".prof")) setMenu(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") setMenu(false); });
+menu.addEventListener("click", e => { if (e.target.closest("button")) setMenu(false); });
+
 // ---------- start ----------
 onAuthStateChanged(auth, async user => {
     if (!user) return location.replace("login.html");
@@ -48,17 +59,25 @@ onAuthStateChanged(auth, async user => {
             await signOut(auth);
             return location.replace("login.html");
         }
+        if (t.data().archived === true) {
+            await signOut(auth);
+            alert("This instructor account was archived. Please contact the department head.");
+            return location.replace("login.html");
+        }
     } catch (err) { console.error(err); return location.replace("login.html"); }
     uid = user.uid;
     me = t.data();
     sections = me.sections || [];
-    $("who").textContent = `${me.name || "Instructor"} | Section(s): ${sortedSections().join(", ") || "none assigned"}`;
+    $("whoName").textContent = $("whoShort").textContent = me.name || "Instructor";
+    $("who").textContent = `Section(s): ${sortedSections().join(", ") || "none assigned"}`;
+    $("avatarTxt").textContent = $("avatarTxt2").textContent = initials(me.name);
     document.body.style.visibility = "visible";
     $("playMaps").innerHTML = mapOpts;
     $("playMinutes").innerHTML = minOpts(45);
     const opts = sortedSections().map(s => `<option>${esc(s)}</option>`).join("") + (sections.length > 1 ? '<option value="">All my sections</option>' : "");
-    $("sectionFilter").innerHTML = opts; $("recSection").innerHTML = opts;
+    $("sectionFilter").innerHTML = opts;
     $("pendSection").innerHTML = '<option value="">All my sections</option>' + sortedSections().map(s => `<option>${esc(s)}</option>`).join("");   // Pending has its own filter   // starts on the first section so long lists stay short
+    await loadCriteria();
     await load(true);
     startLive();
     toast(`Welcome, ${me.name || "Instructor"}.`, "info");
@@ -180,10 +199,6 @@ function watchSessions() {
 
 function renderCap() {
     const st = stats();
-    const lack = st.filter(x => x.missing > 0);
-    $("capBanner").innerHTML = lack.length
-        ? `<div class="alert"><b>Reminder:</b> ${lack.map(x => `${esc(x.sec)} is short by ${x.missing} (${x.reg}/${x.cap})`).join(" &middot; ")}</div>`
-        : '<div class="alert ok">All sections are complete. Every expected student has registered.</div>';
     $("capGrid").innerHTML = st.map(x => {
         const pct = Math.min(100, Math.round(x.reg / x.cap * 100));
         const playing = sessions.filter(s => isOpen(s) && s.section === x.sec && s.studentUid).map(s => s.studentUid);
@@ -198,7 +213,7 @@ function renderCap() {
 }
 
 // ---------- tables ----------
-function render() { renderStats(); renderCap(); renderPending(); renderStudents(); renderRecords(); updateBell(); }
+function render() { renderStats(); renderCap(); renderPending(); renderStudents(); updateBell(); }
 
 function waiting(s) {
     const n = daysAgo(toDate(s.createdAt));
@@ -206,16 +221,23 @@ function waiting(s) {
 }
 
 function mapsChips(s) {
-    return `<div class="maps">${ALL.map(n => marks[markId(s.id, n)] ? `<span class="chip ok" title="${esc(DESTS[n - 1])}">Map ${n} &#10003;</span>` : `<span class="chip" title="${esc(DESTS[n - 1])}">Map ${n}</span>`).join("")}</div>`;
+    return `<div class="maps">${ALL.map(n => {
+        const done = !!marks[markId(s.id, n)], e = evals[evalId(s.id, n)];
+        const score = e ? ` &middot; ${(+e.total).toFixed(0)}${e.status === "draft" ? "*" : ""}` : "";
+        const tip = esc(DESTS[n - 1]) + (e ? (e.status === "draft" ? " (draft score, not released yet)" : " (score released)") : "");
+        return `<span class="chip ${done ? "ok" : ""}" title="${tip}">Map ${n}${done ? " &#10003;" : ""}${score}</span>`;
+    }).join("")}</div>`;
 }
 
 // Rows grouped by section: BSTM 1A first, then 1B, and so on
+const esOf = s => ALL.map(n => evals[evalId(s.id, n)]).filter(Boolean);
 const doneCount = s => ALL.filter(n => marks[markId(s.id, n)]).length;
 const hasPlay = s => sessions.some(x => isOpen(x) && x.studentUid === s.id);
 const needsGrade = s => ALL.some(n => marks[markId(s.id, n)] && !(evals[evalId(s.id, n)] && evals[evalId(s.id, n)].status === "submitted"));
 function sorter(by) {
     return by === "id" ? (a, b) => natural(a.studentIdNumber || "", b.studentIdNumber || "")
         : by === "maps" ? (a, b) => doneCount(b) - doneCount(a) || sortName(a, b)
+        : by === "avg" ? (a, b) => (avgOf(b) ?? -1) - (avgOf(a) ?? -1) || sortName(a, b)
         : sortName;
 }
 function grouped(list, cols, rowFn, emptyText, sortFn) {
@@ -236,8 +258,8 @@ function renderStats() {
     $("statGrid").innerHTML =
         tile(active.length, "Active students", "", "students") +
         tile(pend, "Waiting for approval", pend ? "hot" : "", "pending") +
-        tile(playing, "Playing now", playing ? "ok" : "", "students") +
-        tile(grade, "Waiting for evaluation", grade ? "hot" : "", "performance");
+        tile(playing, "Playing now", playing ? "ok" : "", "live") +
+        tile(grade, "Waiting for evaluation", grade ? "hot" : "", "students");
 }
 
 // ---------- live monitor (what the student is doing right now) ----------
@@ -290,7 +312,7 @@ function renderLive() {
           ${key ? `<div class="l-key"><small>Key points of a good answer</small>${esc(key)}</div>` : ""}
           <div class="l-clocks"><div><small>Map time left</small><b>${x.mapLeft ? mmss(x.mapLeft) : "-"}</b></div>
             <div class="${x.phase === "answering" && x.answerLeft <= 10 ? "hot" : ""}"><small>Answer timer</small><b>${x.phase === "answering" ? x.answerLeft + "s" : "-"}</b></div></div>
-          <div class="pc-btns">${x.viewUrl && !stale ? `<a class="watch" href="${esc(x.viewUrl)}" target="_blank" rel="noopener">&#9658; Watch live (full screen)</a>` : ""}<button class="add-button" data-act="evaluate" data-id="${x.id}">Evaluate</button></div></div>`;
+          <div class="pc-btns">${x.viewUrl && !stale ? `<a class="watch" style="flex:1;text-align:center;background:#2e7d32;color:#fff;text-decoration:none;font-weight:700;border-radius:8px;padding:10px 12px" href="${esc(x.viewUrl)}" target="_blank" rel="noopener">&#9658; Watch live (full screen)</a>` : ""}<button class="add-button" data-act="evaluate" data-id="${x.id}">Evaluate</button></div></div>`;
     }).join("");
 }
 
@@ -332,7 +354,7 @@ function renderStudents() {
         $("studentTable").innerHTML = grouped(list, 6, s =>
             `<tr><td>${esc(s.studentIdNumber)}</td><td>${esc(s.fullname)}</td><td>${mapsChips(s)}</td><td colspan="3">
              <button class="approve-button" data-act="restore" data-id="${s.id}">Restore</button>
-             <button class="delete-button" data-act="remove" data-id="${s.id}">Remove</button></td></tr>`, "No archived students.", sortFn);
+             <button class="delete-button" data-act="remove" data-id="${s.id}">Delete permanently</button></td></tr>`, "No archived students.", sortFn);
         return;
     }
 
@@ -340,10 +362,13 @@ function renderStudents() {
     if (show === "active") list = list.filter(hasPlay);
     else if (show === "inactive") list = list.filter(s => !hasPlay(s));
     else if (show === "grade") list = list.filter(needsGrade);
+    else if (show === "none") list = list.filter(s => !esOf(s).length);
+    else if (show === "draft") list = list.filter(s => esOf(s).some(e => e.status === "draft"));
+    else if (show === "released") list = list.filter(s => esOf(s).length === ALL.length && esOf(s).every(e => e.status === "submitted"));
     const total = inScope(list).length, all = inScope(students.filter(s => s.status === "active")).length;
     $("studentCount").textContent = `Showing ${total} of ${all} student(s)${only ? " in " + only : ""}.`;
 
-    $("studentHead").innerHTML = "<tr><th>Student</th><th>Maps finished</th><th>Account valid until</th><th>Play access</th><th>Actions</th></tr>";
+    $("studentHead").innerHTML = "<tr><th>Student</th><th>Maps &amp; scores</th><th>Average</th><th>Play access</th><th>Actions</th></tr>";
     $("studentTable").innerHTML = grouped(list, 5, s => {
         const d = toDate(s.expiresAt), ex = isExpired(s);
         const mine = sessions.filter(x => isOpen(x) && x.studentUid === s.id);
@@ -352,81 +377,75 @@ function renderStudents() {
         const access = ex ? '<span class="chip err">Expired</span>'
             : mine.length ? `<span class="chip ok"><span class="live-dot"></span>Map${lv.length > 1 ? "s" : ""} ${lv.join(", ")} until ${until}</span>`
             : '<span class="chip warn">Inactive</span>';
-        const done = doneCount(s);
+        const done = doneCount(s), avg = avgOf(s), rel = esOf(s).filter(e => e.status === "submitted").length;
         const first = ex ? "" : mine.length
             ? `<button class="delete-button" data-act="deactivate" data-id="${s.id}">Deactivate</button>`
             : `<button class="approve-button" data-act="activate" data-id="${s.id}" ${done === ALL.length ? "disabled title='All maps are finished. Use More actions > Reset a finished map.'" : ""}>Activate</button>`;
         return `<tr class="${ex ? "expired" : ""}">
          <td><b>${esc(s.fullname)}</b><br><small class="hint">${esc(s.studentIdNumber)}</small></td>
          <td>${mapsChips(s)}</td>
-         <td>${d ? d.toLocaleDateString() : "-"}</td>
-         <td>${access}</td>
+         <td><b>${avg == null ? "-" : avg.toFixed(1)}</b><br><small class="hint">${rel} of ${ALL.length} released</small></td>
+         <td>${access}<br><small class="hint">Valid until ${d ? d.toLocaleDateString() : "-"}</small></td>
          <td class="acts">${first}
            <button class="add-button" data-act="evaluate" data-id="${s.id}">Evaluate</button>
+           <button class="edit-button" data-act="viewRec" data-id="${s.id}">Scores</button>
            <select class="more" data-id="${s.id}"><option value="">More actions...</option>
              <option value="resetMap" ${done ? "" : "disabled"}>Reset a finished map</option>
-             <option value="edit">Edit name</option><option value="renew">Renew account</option><option value="remove">Remove student</option></select></td></tr>`;
+             <option value="edit">Edit name</option><option value="renew">Renew account</option><option value="archive">Archive student</option></select></td></tr>`;
     }, "No students match this filter.", sortFn);
 }
 
-// ---------- records (read-only scores, grouped by section) ----------
-const avgOf = s => { const got = ALL.map(n => evals[evalId(s.id, n)]).filter(Boolean); return got.length ? got.reduce((n, e) => n + (+e.total || 0), 0) / got.length : null; };
-function renderRecords() {
-    const only = $("recSection").value, show = $("recShow").value, by = $("recSort").value;
-    const q = $("recSearch").value.toLowerCase().trim();
-    const sortFn = by === "id" ? (a, b) => natural(a.studentIdNumber || "", b.studentIdNumber || "")
-        : by === "avg" ? (a, b) => (avgOf(b) ?? -1) - (avgOf(a) ?? -1) || sortName(a, b) : sortName;
-    const pass = s => {
-        if (q && ![s.studentIdNumber, s.fullname].join(" ").toLowerCase().includes(q)) return false;
-        const es = ALL.map(n => evals[evalId(s.id, n)]).filter(Boolean);
-        if (show === "none") return !es.length;
-        if (show === "draft") return es.some(e => e.status === "draft");
-        if (show === "released") return es.length === ALL.length && es.every(e => e.status === "submitted");
-        return true;
-    };
-    let shown = 0, total = 0;
-    $("recBody").innerHTML = sortedSections().filter(sec => !only || sec === only).map(sec => {
-        const all = students.filter(s => s.status === "active" && s.section === sec);
-        const rows = all.filter(pass).sort(sortFn);
-        shown += rows.length; total += all.length;
-        return secRow(8, sec, `${rows.length} of ${all.length} student${all.length === 1 ? "" : "s"}`) + (rows.map(s => {
-            const es = ALL.map(n => evals[evalId(s.id, n)]);
-            const rel = es.filter(e => e && e.status === "submitted").length, avg = avgOf(s);
-            return `<tr><td>${esc(s.studentIdNumber)}</td><td>${esc(s.fullname)}</td>
-              ${es.map(e => `<td>${e ? `${(+e.total).toFixed(1)}${e.status === "draft" ? ' <span class="chip warn">draft</span>' : ""}` : "-"}</td>`).join("")}
-              <td><b>${avg == null ? "-" : avg.toFixed(1)}</b></td><td>${rel} of ${ALL.length}</td>
-              <td><button class="edit-button" data-act="viewRec" data-id="${s.id}">View</button></td></tr>`;
-        }).join("") || empty(8, "No students match this filter."));
-    }).join("") || empty(8, "No section selected.");
-    $("recCount").textContent = `Showing ${shown} of ${total} student(s)${only ? " in " + only : ""}.`;
-}
+const avgOf = s => { const got = esOf(s); return got.length ? got.reduce((n, e) => n + (+e.total || 0), 0) / got.length : null; };
 
 // ---------- evaluate (pop-up) ----------
-const totalOf = r => CRIT.reduce((n, [k]) => n + (+r[k] || 0), 0);
+const totalOf = scores => Object.values(scores).reduce((n, v) => n + (+v || 0), 0);
 
 function openEval(s) {
     evalFor = s; dirty = false;
     $("evalTitle").textContent = `Evaluate: ${s.fullname}`;
     $("evalSub").textContent = `${s.studentIdNumber} · ${s.section}`;
-    $("evalHead").innerHTML = `<tr><th>Destination</th>${CRIT.map(([, l, m]) => `<th>${l} (${m})</th>`).join("")}<th>Total</th><th>Remarks</th><th>Status</th></tr>`;
-    $("evalBody").innerHTML = DESTS.map((d, i) => {
-        const e = evals[evalId(s.id, i + 1)] || {}, played = !!marks[markId(s.id, i + 1)];
-        return `<tr data-lv="${i + 1}"><td>${esc(d)}<br>${played ? '<span class="chip ok">Finished the map</span>' : '<span class="chip">Not played yet</span>'}</td>
-          ${CRIT.map(([k, , m]) => `<td><input class="eval-in" type="number" step="0.5" min="0" max="${m}" data-k="${k}" data-max="${m}" value="${e[k] ?? ""}"></td>`).join("")}
-          <td><b class="evTotal">${e.total != null ? (+e.total).toFixed(1) : "-"}</b></td>
-          <td><input class="rem" maxlength="200" placeholder="optional" value="${esc(e.remarks || "")}"></td>
-          <td>${e.status === "submitted" ? '<span class="chip ok">Released</span>' : e.status === "draft" ? '<span class="chip warn">Draft</span>' : '<span class="chip">Not graded</span>'}</td></tr>`;
+    // Criteria are the rows and the 3 maps are the columns, so any number of criteria fits without sideways scrolling
+    const evs = DESTS.map((d, i) => evals[evalId(s.id, i + 1)] || {});
+    $("evalHead").innerHTML = `<tr><th>Criteria</th>${DESTS.map((d, i) => {
+        const played = !!marks[markId(s.id, i + 1)];
+        return `<th>Map ${i + 1}<small>${esc(d)}</small>${played ? '<span class="chip ok">Finished</span>' : '<span class="chip">Not played yet</span>'}</th>`;
+    }).join("")}</tr>`;
+    $("evalBody").innerHTML = CRIT.map(([k, l, m]) => `<tr><td class="crit-lbl">${esc(l)} <span class="max-pill">max ${m}</span></td>
+          ${DESTS.map((d, i) => `<td><input class="eval-in" type="number" step="0.5" min="0" max="${m}" data-lv="${i + 1}" data-k="${k}" data-max="${m}" placeholder="0-${m}" value="${scoreRaw(evs[i], k)}"></td>`).join("")}</tr>`).join("")
+        + `<tr class="tot"><td>Total <small>(of 100)</small></td>${evs.map((e, i) => `<td><b class="evTotal" data-lv="${i + 1}">${e.total != null ? (+e.total).toFixed(1) : "-"}</b></td>`).join("")}</tr>`
+        + `<tr><td>Status</td>${evs.map(e => `<td>${e.status === "submitted" ? '<span class="chip ok">Released</span>' : e.status === "draft" ? '<span class="chip warn">Draft</span>' : '<span class="chip">Not graded</span>'}</td>`).join("")}</tr>`;
+    $("evalRemarks").innerHTML = DESTS.map((d, i) => {
+        const e = evals[evalId(s.id, i + 1)] || {}, txt = e.remarks || "";
+        return `<div class="rem-box"><label for="rem${i + 1}">Remarks &middot; Map ${i + 1}: ${esc(d)}</label>
+          <textarea class="rem" id="rem${i + 1}" data-lv="${i + 1}" rows="3" maxlength="200" placeholder="Optional. Write your comments for this map (up to 200 characters).">${esc(txt)}</textarea>
+          <span class="rem-count">${txt.length} / 200</span></div>`;
     }).join("");
     $("evalDialog").showModal();
 }
 
 $("evalBody").addEventListener("input", e => {
-    const inp = e.target.closest(".eval-in,.rem"); if (!inp) return;
+    const inp = e.target.closest(".eval-in"); if (!inp) return;
     dirty = true;
-    const row = inp.closest("tr");
-    if (inp.classList.contains("eval-in")) inp.classList.toggle("bad", +inp.value > +inp.dataset.max || +inp.value < 0);
-    const ins = [...row.querySelectorAll(".eval-in")];
-    row.querySelector(".evTotal").textContent = ins.some(i => i.value !== "") ? ins.reduce((n, i) => n + clamp(+i.value, +i.dataset.max), 0).toFixed(1) : "-";
+    inp.classList.toggle("bad", +inp.value > +inp.dataset.max || +inp.value < 0);
+    const ins = [...$("evalBody").querySelectorAll(`.eval-in[data-lv="${inp.dataset.lv}"]`)];
+    $("evalBody").querySelector(`.evTotal[data-lv="${inp.dataset.lv}"]`).textContent =
+        ins.some(i => i.value !== "") ? ins.reduce((n, i) => n + clamp(+i.value, +i.dataset.max), 0).toFixed(1) : "-";
+});
+
+$("evalBody").addEventListener("change", e => {
+    const inp = e.target.closest(".eval-in"); if (!inp || inp.value === "") return;
+    const max = +inp.dataset.max;
+    if (+inp.value > max || +inp.value < 0) {
+        inp.value = clamp(+inp.value, max); inp.classList.remove("bad");
+        inp.dispatchEvent(new Event("input", { bubbles: true }));
+        toast(`The maximum for this criterion is ${max}. It was set to ${inp.value}.`, "warn");
+    }
+});
+
+$("evalRemarks").addEventListener("input", e => {
+    const ta = e.target.closest(".rem"); if (!ta) return;
+    dirty = true;
+    ta.parentElement.querySelector(".rem-count").textContent = `${ta.value.length} / 200`;
 });
 
 async function closeEval() {
@@ -439,25 +458,28 @@ $("evalDialog").addEventListener("cancel", ev => { ev.preventDefault(); closeEva
 async function saveEval(submit, btn) {
     const s = evalFor;
     if (!s) return;
-    const rows = [...$("evalBody").querySelectorAll("tr[data-lv]")];
-    if (rows.some(r => r.querySelector(".eval-in.bad"))) return toast("Some scores are above the maximum. Please fix the red boxes.", "err");
-    const todo = rows.filter(r => [...r.querySelectorAll(".eval-in")].some(i => i.value !== ""));
+    const rows = DESTS.map((_, i) => ({ lv: i + 1, ins: [...$("evalBody").querySelectorAll(`.eval-in[data-lv="${i + 1}"]`)] }));
+    if (rows.some(r => r.ins.some(i => i.classList.contains("bad")))) return toast("Some scores are above the maximum. Please fix the red boxes.", "err");
+    const todo = rows.filter(r => r.ins.some(i => i.value !== ""));
     if (!todo.length) return toast("Enter at least one score first.", "warn");
     if (submit) {
-        const blank = todo.some(r => [...r.querySelectorAll(".eval-in")].some(i => i.value === ""));
+        const blank = todo.some(r => r.ins.some(i => i.value === ""));
         const msg = `${blank ? "Some criteria are blank and will count as 0. " : ""}Release ${todo.length} result${todo.length > 1 ? "s" : ""} to ${s.fullname}? The student will see them right away.`;
         if (!(await ask(msg, { title: "Submit & release", ok: "Submit & release" }))) return;
-    } else if (todo.some(r => (evals[evalId(s.id, +r.dataset.lv)] || {}).status === "submitted") &&
+    } else if (todo.some(r => (evals[evalId(s.id, r.lv)] || {}).status === "submitted") &&
         !(await ask("Saving as draft hides an already released result from the student. Continue?", { title: "Hide released result" }))) return;
     await SAFE(btn, async () => {
         for (const r of todo) {
-            const lv = +r.dataset.lv, data = {
+            const lv = r.lv, data = {
                 uid: s.id, studentIdNumber: s.studentIdNumber, fullname: s.fullname, section: s.section,
-                level: lv, destination: DESTS[lv - 1], remarks: r.querySelector(".rem").value.trim(),
+                level: lv, destination: DESTS[lv - 1], remarks: $("evalRemarks").querySelector(`.rem[data-lv="${lv}"]`).value.trim(),
                 status: submit ? "submitted" : "draft", evaluatorUid: uid, evaluatorName: me.name || "", updatedAt: Timestamp.now()
             };
-            r.querySelectorAll(".eval-in").forEach(i => data[i.dataset.k] = clamp(+i.value, +i.dataset.max));
-            data.total = Math.round(totalOf(data) * 10) / 10;
+            const scores = {};
+            r.ins.forEach(i => scores[i.dataset.k] = clamp(+i.value, +i.dataset.max));
+            data.scores = scores;
+            data.rubric = CRIT.map(([key, label, max]) => ({ key, label, max }));   // the rubric used for this grade
+            data.total = Math.round(totalOf(scores) * 10) / 10;
             if (submit) data.submittedAt = Timestamp.now();
             await setDoc(doc(db, "evaluations", evalId(s.id, lv)), data);
         }
@@ -475,13 +497,16 @@ function openView(s) {
     viewing = s;
     $("viewTitle").textContent = s.fullname;
     $("viewSub").textContent = `${s.studentIdNumber} · ${s.section}`;
-    $("viewHead").innerHTML = `<tr><th>Destination</th>${CRIT.map(([, l, m]) => `<th>${l} (${m})</th>`).join("")}<th>Total</th><th>Status</th></tr>`;
-    $("viewBody").innerHTML = DESTS.map((d, i) => {
-        const e = evals[evalId(s.id, i + 1)];
-        return e ? `<tr><td>${esc(d)}</td>${CRIT.map(([k]) => `<td>${(+e[k] || 0).toFixed(1)}</td>`).join("")}<td><b>${(+e.total || 0).toFixed(1)}</b></td>
-                    <td>${e.status === "submitted" ? '<span class="chip ok">Released</span>' : '<span class="chip warn">Draft</span>'}</td></tr>
-                    ${e.remarks ? `<tr><td colspan="8" class="hint">Remarks: ${esc(e.remarks)}</td></tr>` : ""}`
-                 : `<tr><td>${esc(d)}</td><td colspan="7" class="hint">Not graded yet</td></tr>`;
+    const evs = DESTS.map((d, i) => evals[evalId(s.id, i + 1)]);
+    const rub = rubricFor(evs);
+    const num = (e, k) => e ? (+scoreRaw(e, k) || 0).toFixed(1) : "-";
+    $("viewHead").innerHTML = `<tr><th>Criteria</th>${DESTS.map((d, i) => `<th>Map ${i + 1}<small>${esc(d)}</small></th>`).join("")}</tr>`;
+    $("viewBody").innerHTML = rub.map(([k, l, m]) => `<tr><td class="crit-lbl">${esc(l)} <span class="max-pill">max ${m}</span></td>${evs.map(e => `<td>${num(e, k)}</td>`).join("")}</tr>`).join("")
+        + `<tr class="tot"><td>Total <small>(of 100)</small></td>${evs.map(e => `<td><b>${e ? (+e.total || 0).toFixed(1) : "-"}</b></td>`).join("")}</tr>`
+        + `<tr><td>Status</td>${evs.map(e => `<td>${!e ? '<span class="chip">Not graded</span>' : e.status === "submitted" ? '<span class="chip ok">Released</span>' : '<span class="chip warn">Draft</span>'}</td>`).join("")}</tr>`;
+    $("viewRemarks").innerHTML = DESTS.map((d, i) => {
+        const e = evs[i];
+        return `<div class="rem-view"><b>Map ${i + 1} &middot; ${esc(d)}</b><p class="${e && e.remarks ? "" : "none"}">${e && e.remarks ? esc(e.remarks) : "No remarks."}</p></div>`;
     }).join("");
     $("viewDialog").showModal();
 }
@@ -500,14 +525,14 @@ function sheetFor(sec, today) {
         const avg = got.length ? got.reduce((a, e) => a + (+e.total || 0), 0) / got.length : null;
         return `<tr><td>${n + 1}</td><td>${esc(s.studentIdNumber)}</td><td style="text-align:left">${esc(s.fullname)}</td>${es.map(e => `<td>${e ? (+e.total).toFixed(1) : "-"}</td>`).join("")}<td><b>${avg == null ? "-" : avg.toFixed(1)}</b></td></tr>`;
     }).join("");
-    return `<div class="pr-sec"><div class="pr-head"><img src="images/htm-logo.png" onerror="this.onerror=null;this.src='images/bulsu-seal.png'" alt=""><div><strong>Bulacan State University &middot; Sarmiento Campus</strong><br>
+    return `<div class="pr-sec"><div class="pr-head"><img class="pr-logo" src="images/bulsu-seal.png" alt="BulSU seal"><img class="pr-logo" src="images/htm-logo.png" alt="HTM logo" onerror="this.style.display='none'"><div><strong>Bulacan State University &middot; Sarmiento Campus</strong><br>
       Department of Hospitality and Tourism Management<br><span class="pr-title">DejaView VR &ndash; Class Score Sheet</span></div></div>
       <table class="pr-info"><tr><td>Section</td><td>${esc(sec)}</td><td>Instructor</td><td>${esc(me.name || "")}</td></tr><tr><td>Students</td><td>${list.length}</td><td>Date printed</td><td>${esc(today)}</td></tr></table>
-      <table class="pr-table"><thead><tr><th>#</th><th>Student ID</th><th>Name</th>${DESTS.map(d => `<th>${esc(d)} (100)</th>`).join("")}<th>Average</th></tr></thead><tbody>${rows}</tbody></table>
+      <table class="pr-table pr-class"><thead><tr><th>#</th><th>Student ID</th><th>Name</th>${DESTS.map((d, i) => `<th>Map ${i + 1}<small>${esc(d)}<br>(100)</small></th>`).join("")}<th>Average</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="pr-sign"><div><span></span>Instructor: ${esc(me.name || "")}</div><div><span></span>Noted by: ${esc(head.headName || "")}<br><small>${esc(head.headTitle || "")}</small></div></div></div>`;
 }
 $("printClass").addEventListener("click", () => {
-    const only = $("recSection").value, list = only ? [only] : sortedSections();
+    const only = $("sectionFilter").value, list = only ? [only] : sortedSections();
     const withStudents = list.filter(sec => students.some(s => s.status === "active" && s.section === sec));
     if (!withStudents.length) return toast("There are no students to print.", "warn");
     const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
@@ -552,8 +577,14 @@ async function runAction(act, s, btn) {
                 if (!(await ask(`Restore ${s.fullname} as an active student for ${TERM_MONTHS} months?`, { title: "Restore student", ok: "Restore" }))) return;
                 await updateDoc(doc(db, "students", s.id), { status: "active", expiresAt: newExpiry() });
                 toast(`${s.fullname} restored.`); break;
+            case "archive": {
+                if (!(await ask(`Archive ${s.fullname}? They can no longer log in or play, and they leave the active list and the capacity count. Their scores and records are kept. You can restore them any time from the Archived list.`, { title: "Archive student", ok: "Archive", danger: true }))) return;
+                await closeSessions(sessions.filter(x => isOpen(x) && x.studentUid === s.id));
+                await updateDoc(doc(db, "students", s.id), { status: "archived" });
+                toast(`${s.fullname} was archived.`, "warn"); break;
+            }
             case "remove": {
-                if (!(await ask(`Remove ${s.fullname}? Their play records and evaluations are deleted too. This cannot be undone.`, { title: "Remove student", ok: "Remove", danger: true }))) return;
+                if (!(await ask(`Permanently delete ${s.fullname}? Their play records and evaluations are deleted too. This cannot be undone. Only do this for old archived students you no longer need.`, { title: "Delete permanently", ok: "Delete permanently", danger: true }))) return;
                 const jobs = [];
                 ALL.forEach(n => {
                     if (evals[evalId(s.id, n)]) jobs.push(deleteDoc(doc(db, "evaluations", evalId(s.id, n))));
@@ -562,7 +593,7 @@ async function runAction(act, s, btn) {
                 sessions.filter(x => x.studentUid === s.id).forEach(x => jobs.push(deleteDoc(doc(db, "sessions", x.id))));
                 await Promise.all(jobs);
                 await deleteDoc(doc(db, "students", s.id));
-                toast(`${s.fullname} was removed.`, "warn"); break;
+                toast(`${s.fullname} was deleted permanently.`, "warn"); break;
             }
             case "edit": {
                 const n = await askText({ title: "Edit full name", label: `Student ID ${s.studentIdNumber}`, value: s.fullname, min: 2, max: 80 });
@@ -628,8 +659,6 @@ document.addEventListener("change", e => {
 
 $("studentView").addEventListener("change", () => { view = $("studentView").value; renderStudents(); });
 ["sectionFilter", "showFilter", "sortBy"].forEach(id => $(id).addEventListener("change", renderStudents));
-["recSection", "recShow", "recSort"].forEach(id => $(id).addEventListener("change", renderRecords));
-$("recSearch").addEventListener("input", renderRecords);
 $("pendSection").addEventListener("change", renderPending);
 $("pendSearch").addEventListener("input", renderPending);
 $("searchStudent").addEventListener("input", renderStudents);
@@ -658,12 +687,6 @@ $("watchGo").addEventListener("click", () => {
 });
 
 $("pwBtn").addEventListener("click", changeMyPassword);
-
-window.addEventListener("hashchange", () => {
-    if (location.hash !== "#students") return;
-    const lack = stats().filter(x => x.missing > 0);
-    if (lack.length) toast("Not yet registered: " + lack.map(x => `${x.sec} (${x.missing})`).join(", "), "warn");
-});
 
 $("logoutButton").addEventListener("click", async () => {
     if (!(await ask("Log out of the instructor dashboard?", { title: "Log out", ok: "Log out" }))) return;

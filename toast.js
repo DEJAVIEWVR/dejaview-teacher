@@ -7,13 +7,15 @@
 
 export function toast(message, type = "ok") {
     let box = document.getElementById("toasts");
-    if (!box) { box = document.createElement("div"); box.id = "toasts"; box.setAttribute("aria-live", "polite"); document.body.appendChild(box); }
+    if (!box) { box = document.createElement("div"); box.id = "toasts"; box.setAttribute("aria-live", "polite"); box.setAttribute("popover", "manual"); document.body.appendChild(box); }
     const t = document.createElement("div");
     t.className = "toast " + type;
     t.textContent = message;
     t.addEventListener("click", () => t.remove());
     box.appendChild(t);
     while (box.children.length > 5) box.firstChild.remove();
+    // Open dialogs sit in the browser's top layer; showing the toast box as a popover puts it above them
+    try { if (box.showPopover) { if (box.matches(":popover-open")) box.hidePopover(); box.showPopover(); } } catch (e) { /* older browsers */ }
     setTimeout(() => { t.classList.add("hide"); setTimeout(() => t.remove(), 300); }, type === "err" ? 6000 : 4000);
 }
 

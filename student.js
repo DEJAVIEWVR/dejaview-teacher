@@ -2,7 +2,7 @@ import { auth, db, $, esc } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { collection, query, where, onSnapshot, getDoc, getDocs, doc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { DESTS } from "./destinations.js";
-import { CRIT, printReport } from "./report.js";
+import { printReport, loadCriteria, rubricOf, scoreRaw } from "./report.js";
 import { toast, ask, niceError } from "./toast.js";
 
 let me = null, evals = [], first = true, mods = [], curDest = DESTS[0];
@@ -18,6 +18,7 @@ onAuthStateChanged(auth, async user => {
     } catch (err) { console.error(err); return location.replace("login.html"); }
 
     $("who").textContent = me.fullname || "Student";
+    await loadCriteria();
     renderProfile();
     document.body.style.visibility = "visible";
 
@@ -78,8 +79,8 @@ function renderResults() {
         <div class="mod-top"><span class="mod-chip">Level ${r.level}</span><span class="mod-date">${fmtDate(toDate(r.submittedAt))}</span></div>
         <h3>${esc(r.destination)}</h3>
         <div class="big-score">${(+r.total || 0).toFixed(1)}<small> / 100</small></div>
-        ${CRIT.map(([k, l, m]) => `<div class="crit"><span>${l}</span><b>${(+r[k] || 0).toFixed(1)} / ${m}</b>
-            <div class="bar"><i style="width:${Math.min(100, (+r[k] || 0) / m * 100)}%"></i></div></div>`).join("")}
+        ${rubricOf(r).map(([k, l, m]) => { const v = +scoreRaw(r, k) || 0; return `<div class="crit"><span>${esc(l)}</span><b>${v.toFixed(1)} / ${m}</b>
+            <div class="bar"><i style="width:${Math.min(100, v / m * 100)}%"></i></div></div>`; }).join("")}
         ${r.remarks ? `<p class="mod-text">Remarks: ${esc(r.remarks)}</p>` : ""}
         <p class="mod-date">Evaluated by ${esc(r.evaluatorName || "your instructor")}</p></article>`).join("")}</div>`;
 }
@@ -111,15 +112,27 @@ function linkButton(link) {
     return `<a class="mod-link" href="${esc(link)}" target="_blank" rel="noopener">${icon} ${text}</a>`;
 }
 
+function imgSrc(u) {
+    u = (u || "").trim();
+    const g = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]+)/);
+    return g ? `https://drive.google.com/thumbnail?id=${g[1]}&sz=w1000` : u;
+}
+function pics(m) {
+    const list = Array.isArray(m.images) ? m.images.filter(i => i && i.url) : [];
+    return list.length ? `<div class="mod-imgs">${list.map(i => `<figure><a href="${esc(imgSrc(i.url))}" target="_blank" rel="noopener"><img src="${esc(imgSrc(i.url))}" alt="${esc(i.caption || "")}" loading="lazy"></a>${i.caption ? `<figcaption>${esc(i.caption)}</figcaption>` : ""}</figure>`).join("")}</div>` : "";
+}
+
 function renderModules() {
     $("modTabs").innerHTML = DESTS.map(d => `<button class="tab ${d === curDest ? "active" : ""}" data-tab="${esc(d)}">${esc(d)}<span class="count">${mods.filter(m => m.destinationID === d).length}</span></button>`).join("");
     const list = mods.filter(m => m.destinationID === curDest).sort((a, b) => (a.title || "").localeCompare(b.title || ""));
     $("modList").innerHTML = list.length
         ? `<div class="mgrid">${list.map(m => {
             const long = (m.content || "").length > 200 || (m.content || "").split("\n").length > 4;
-            return `<article class="mod-card"><div class="mod-top"><span class="mod-chip">Lesson</span></div>
+            const story = m.kind === "stop";
+            return `<article class="mod-card"><div class="mod-top"><span class="mod-chip ${story ? "story" : ""}">${story ? "History at: " + esc(m.stop || m.title) : "Lesson"}</span></div>
               <h3>${esc(m.title)}</h3><p class="mod-text">${esc(m.content)}</p>
               ${long ? '<button class="mod-more" data-more>Read more</button>' : ""}
+              ${pics(m)}
               <div class="mod-actions">${linkButton(m.link)}</div></article>`;
         }).join("")}</div>`
         : `<div class="mod-empty"><strong>No lessons yet for ${esc(curDest)}</strong>Your instructor has not added one yet.</div>`;

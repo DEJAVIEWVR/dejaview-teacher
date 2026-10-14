@@ -5,21 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DejaView - Admin Portal</title>
     <style>body { visibility: hidden; }</style>
-    <link rel="stylesheet" href="dejaview.css">
+    <link rel="stylesheet" href="dejaview.css?v=20261011n">
 </head>
-<body>
+<body class="paged">
     <header>
         <img src="images/htm-logo.png" onerror="this.onerror=null;this.src='images/bulsu-seal.png'" alt="Department logo">
         <h1>DejaView Admin</h1>
-        <div class="who-box"><b id="headName">Loading...</b><br><span id="headTitle"></span></div>
-        <button id="editHead" class="mini" title="Change the name and title shown here">Edit</button>
-        <button id="pwBtn" class="logout-button" style="background:rgba(255,255,255,.2);color:#fff">Change password</button>
-        <button id="logoutButton" class="logout-button">Logout</button>
+        <div class="prof">
+            <button id="avatarBtn" class="prof-btn" type="button" aria-haspopup="true" aria-expanded="false" title="Your profile">
+                <span class="avatar" id="avatarTxt">A</span>
+                <span class="prof-name" id="headNameShort"></span>
+                <span class="caret">▾</span>
+            </button>
+            <div id="profMenu" class="prof-menu" hidden>
+                <div class="prof-top">
+                    <span class="avatar big" id="avatarTxt2">A</span>
+                    <div><b id="headName">Loading...</b><span id="headTitle"></span></div>
+                </div>
+                <button id="editHead" type="button">✏️ Edit name &amp; title</button>
+                <button id="pwBtn" type="button">🔑 Change password</button>
+                <button id="archBtn" type="button">🗑 Archived teachers <span class="arch-n" id="archN"></span></button>
+                <button id="logoutButton" type="button" class="out">⎋ Logout</button>
+            </div>
+        </div>
     </header>
     <nav>
         <a href="#sections">Sections</a>
         <a href="#teachers">Teacher Accounts</a>
-        <a href="#waypoints">Extra Questions</a>
+        <a href="#students">Student List</a>
+        <a href="#waypoints">Grading &amp; Questions</a>
     </nav>
     <main>
         <section id="sections">
@@ -38,15 +52,14 @@
 
         <section id="teachers">
             <h2>Teacher Accounts</h2>
-            <p class="hint">A teacher can handle two or more sections. Tick every section the teacher handles.</p>
+            <p class="hint">A teacher can handle two or more sections. Tick every section the teacher handles. Teachers are archived, never deleted, so their records stay safe.</p>
             <form id="teacherForm">
                 <div class="form-grid">
                     <input id="tName" placeholder="Full name" minlength="2" maxlength="80" required>
                     <div><input id="tEmpId" placeholder="Employee ID (10 digits)" inputmode="numeric" maxlength="10" autocomplete="off" required style="width:100%">
-                    <small id="empHelp" class="hint">The teacher logs in with this Employee ID.</small></div>
-                    <input id="tPass" type="password" placeholder="Temporary password" minlength="8" autocomplete="new-password" required>
+                    <small id="empHelp" class="hint"></small></div>
+                    <input id="tPass" type="password" placeholder="Temporary password (8+ characters, 1 letter and 1 number)" minlength="8" autocomplete="new-password" required>
                 </div>
-                <p class="hint">Password: at least 8 characters with at least one letter and one number. The teacher can change it later with the "Change password" button.</p>
                 <label class="hint" style="display:block;margin-top:6px">Sections handled by this teacher</label>
                 <div class="checks" id="tSections"></div>
                 <button type="submit" class="add-button" id="createTeacher" style="margin-top:12px">Create Teacher</button>
@@ -56,10 +69,39 @@
                 <thead><tr><th>Name</th><th>Employee ID (login)</th><th>Sections</th><th>Actions</th></tr></thead>
                 <tbody id="teacherBody"><tr><td colspan="4">Loading...</td></tr></tbody>
             </table></div>
+
+        </section>
+
+        <section id="students">
+            <h2>Student List</h2>
+            <p class="hint">Official (approved) students, sorted by section. This list is view only.</p>
+            <div class="toolbar">
+                <label class="grow">Search<input id="stuSearch" type="search" placeholder="Name, student ID or username" autocomplete="off"></label>
+                <label>Section<select id="stuSection"><option value="">All sections</option></select></label>
+                <span class="chip" id="stuCount">0 students</span>
+            </div>
+            <div class="student-table-container"><table>
+                <thead><tr><th>Name</th><th>Student ID</th><th>Section</th><th>Registered</th></tr></thead>
+                <tbody id="stuBody"><tr><td colspan="4">Loading...</td></tr></tbody>
+            </table></div>
         </section>
 
         <section id="waypoints">
-            <h2>Extra Questions per Destination</h2>
+            <h2>Grading Criteria</h2>
+            <p class="hint">Rename the criteria, add new ones, remove the ones you do not need, and set the maximum points of each. The maximums must add up to exactly 100. This applies to every section, the instructors' Evaluate window, the printouts and the student page.</p>
+            <div class="crit-card">
+                <div class="crit-head"><span>Criterion name</span><span>Maximum points</span></div>
+                <div id="critRows"></div>
+                <button type="button" class="edit-button" id="critAdd">+ Add criterion</button>
+                <p class="crit-total" id="critTotal"></p>
+                <div class="crit-actions">
+                    <button type="button" class="add-button" id="critSave">Save criteria</button>
+                    <button type="button" class="edit-button" id="critReset">Reset to default</button>
+                </div>
+                <p class="hint">Tip: set this before instructors start grading. Scores that were already released keep their numbers, but they will be shown against the new maximums.</p>
+            </div>
+
+            <h2 style="margin-top:28px">Extra Questions per Destination</h2>
             <div class="alert"><b>What is a waypoint?</b> A waypoint is one <b>stop</b> along the virtual tour where a tourist character stops the student and asks a question.
             Each destination (Grotto, Mt. Balagbag, Padre Pio) already has its ready-made stops. An <b>extra stop</b> is a spare stop that instructors can fill with their own question in the Question Bank.
             Use the table to choose how many extra stops each destination may have (0 to 3).</div>
@@ -71,7 +113,7 @@
         </section>
         
     </main>
-    <script type="module" src="admin.js"></script>
-    <script type="module" src="waypoints.js"></script>
+    <script type="module" src="admin.js?v=20261011n"></script>
+    <script type="module" src="waypoints.js?v=20261011n"></script>
 </body>
 </html>
