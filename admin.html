@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DejaView - Admin Portal</title>
     <style>body { visibility: hidden; }</style>
-    <link rel="stylesheet" href="dejaview.css?v=20261015a">
+    <link rel="stylesheet" href="dejaview.css?v=20261016c">
 </head>
 <body class="paged">
     <header>
@@ -24,7 +24,6 @@
                 </div>
                 <button id="editHead" type="button">✏️ Edit name &amp; title</button>
                 <button id="pwBtn" type="button">🔑 Change password</button>
-                <button id="archBtn" type="button">🗑 Archived teachers <span class="arch-n" id="archN"></span></button>
                 <button id="logoutButton" type="button" class="out">⎋ Logout</button>
             </div>
         </div>
@@ -69,6 +68,11 @@
                 <thead><tr><th>Name</th><th>Employee ID (login)</th><th>Sections</th><th>Actions</th></tr></thead>
                 <tbody id="teacherBody"><tr><td colspan="4">Loading...</td></tr></tbody>
             </table></div>
+            <details id="archBox" class="arch-box" hidden>
+                <summary>Archived teachers <span class="arch-n" id="archN"></span></summary>
+                <p class="hint">Archived teachers cannot log in. Press Restore to bring one back.</p>
+                <div id="archBody"></div>
+            </details>
 
         </section>
 
@@ -90,7 +94,7 @@
             <h2>Grading Criteria</h2>
             <p class="hint">Rename the criteria, add new ones, remove the ones you do not need, and set the maximum points and a short explanation for each. The maximums must add up to exactly 100. Students see the criteria and the explanations in the game before each map and on their page. This also applies to every section, the instructors' Evaluate window and the printouts.</p>
             <div class="crit-card">
-                <div class="crit-head"><span>Criterion name and explanation</span><span>Maximum points</span></div>
+                <div class="crit-head"><span>Criterion</span><span>Explanation</span><span>Max points</span></div>
                 <div id="critRows"></div>
                 <button type="button" class="edit-button" id="critAdd">+ Add criterion</button>
                 <p class="crit-total" id="critTotal"></p>

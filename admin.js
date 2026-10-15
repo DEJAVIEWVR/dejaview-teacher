@@ -82,6 +82,9 @@ function render() {
         || '<tr><td colspan="4">No active teachers.</td></tr>';
     archivedList = archived;
     $("archN").textContent = archived.length ? `(${archived.length})` : "";
+    $("archBox").hidden = !archived.length;      // nothing archived = nothing to show
+    $("archBody").innerHTML = archived.map(x => `<div class="arch-item"><div><b>${esc(x.name)}</b><span>${esc(x.employeeId)} · ${esc((x.sections || []).join(", ") || "no sections")}</span></div>
+        <button type="button" class="edit-button" data-act="restoreTeacher" data-id="${esc(x.id)}">Restore</button></div>`).join("");
 }
 
 // ---------- department head name and title (shown in the header) ----------
@@ -281,36 +284,6 @@ function renderStudents() {
         || '<tr><td colspan="4">No official students match.</td></tr>';
 }
 ["stuSearch", "stuSection"].forEach(id => $(id).addEventListener("input", renderStudents));
-
-// ---------- archived teachers (opened from the profile menu) ----------
-function openArchived() {
-    const d = document.createElement("dialog");
-    d.className = "stu-dlg";
-    const draw = () => {
-        d.innerHTML = `<div class="sd-head"><span class="avatar big">🗑</span><div><h2>Archived teachers</h2><span class="sd-sub">They cannot log in. Press Restore to bring one back.</span></div></div>
-            <div class="arch-list">${archivedList.map(x => `<div class="arch-item"><div><b>${esc(x.name)}</b><span>${esc(x.employeeId)} · ${esc((x.sections || []).join(", ") || "no sections")}</span></div>
-                <button type="button" class="edit-button" data-restore="${esc(x.id)}">Restore</button></div>`).join("") || '<p class="hint" style="padding:6px 0">No archived teachers.</p>'}</div>
-            <div class="sd-actions"><button type="button" class="sd-cancel" data-close>Close</button></div>`;
-    };
-    draw();
-    d.addEventListener("click", async e => {
-        if (e.target.closest("[data-close]")) return d.close();
-        const b = e.target.closest("[data-restore]");
-        if (!b) return;
-        const t = teachers.find(x => x.id === b.dataset.restore);
-        if (!t || !(await ask(`Restore ${t.name}? They can log in again with the same Employee ID and password.`, { title: "Restore teacher", ok: "Restore" }))) return;
-        try {
-            await updateDoc(doc(db, "teachers", t.id), { archived: false });
-            toast(`${t.name} is active again.`);
-            await loadAll(); draw();
-            if (!archivedList.length) d.close();
-        } catch (err) { console.error(err); toast("Could not restore. " + niceError(err), "err"); }
-    });
-    d.addEventListener("close", () => d.remove());
-    document.body.appendChild(d);
-    d.showModal();
-}
-$("archBtn").addEventListener("click", openArchived);
 
 // ---------- grading criteria (add, remove, rename; maximums add up to 100) ----------
 const MAX_CRIT = 10;
