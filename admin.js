@@ -324,13 +324,14 @@ function critUpdate() {
     $("critAdd").disabled = critCount() >= MAX_CRIT;
     $("critRows").querySelectorAll(".crit-del").forEach(b => b.disabled = critCount() <= 1);
 }
-function critRow(k, l, m) {
+function critRow(k, l, m, d) {
     return `<div class="crit-row" data-k="${esc(k)}">
         <input class="crit-name" maxlength="60" value="${esc(l)}" placeholder="Criterion name" aria-label="Criterion name">
         <input class="crit-max" type="number" min="1" max="100" step="1" value="${m}" aria-label="Maximum points"><span>pts</span>
-        <button type="button" class="crit-del" title="Remove this criterion" aria-label="Remove this criterion">&#10005;</button></div>`;
+        <button type="button" class="crit-del" title="Remove this criterion" aria-label="Remove this criterion">&#10005;</button>
+        <input class="crit-desc" maxlength="140" value="${esc(d || "")}" placeholder="Explanation: what is the student judged on?" aria-label="Explanation"></div>`;
 }
-function critFill(rows) { $("critRows").innerHTML = rows.map(([k, l, m]) => critRow(k, l, m)).join(""); critUpdate(); }
+function critFill(rows) { $("critRows").innerHTML = rows.map(([k, l, m, d]) => critRow(k, l, m, d)).join(""); critUpdate(); }
 $("critRows").addEventListener("input", critUpdate);
 $("critRows").addEventListener("click", e => {
     const b = e.target.closest(".crit-del");
@@ -339,10 +340,10 @@ $("critRows").addEventListener("click", e => {
 });
 $("critAdd").addEventListener("click", () => {
     if (critCount() >= MAX_CRIT) return toast(`You can have at most ${MAX_CRIT} criteria.`, "warn");
-    $("critRows").insertAdjacentHTML("beforeend", critRow("c" + Date.now().toString(36) + critCount(), "", 0));
+    $("critRows").insertAdjacentHTML("beforeend", critRow("c" + Date.now().toString(36) + critCount(), "", 0, ""));
     critUpdate();
     const last = $("critRows").querySelector(".crit-row:last-child .crit-name"); if (last) last.focus();
-    toast("Type the name and the points of the new criterion. If the total is over 100, lower another criterion.", "info");
+    toast("Type the name, the points and a short explanation of the new criterion. If the total is over 100, lower another criterion.", "info");
 });
 $("critReset").addEventListener("click", () => { critFill(DEFAULT_CRIT); toast("Defaults restored. Press Save criteria to keep them.", "info"); });
 $("critSave").addEventListener("click", e => busy(e.currentTarget, async () => {
@@ -350,11 +351,13 @@ $("critSave").addEventListener("click", e => busy(e.currentTarget, async () => {
     for (const row of $("critRows").querySelectorAll(".crit-row")) {
         const label = row.querySelector(".crit-name").value.trim();
         const max = Number(row.querySelector(".crit-max").value);
+        const desc = row.querySelector(".crit-desc").value.trim();
         if (label.length < 2) return toast("Every criterion needs a name (at least 2 letters).", "warn");
         if (seen.has(label.toLowerCase())) return toast(`"${label}" is used twice. Give each criterion its own name.`, "warn");
         if (!Number.isInteger(max) || max < 1 || max > 100) return toast(`"${label}": the maximum must be a whole number from 1 to 100.`, "warn");
+        if (desc.length < 5) return toast(`Write a short explanation for "${label}" (at least 5 letters).`, "warn");
         seen.add(label.toLowerCase());
-        items.push({ key: row.dataset.k, label, max });
+        items.push({ key: row.dataset.k, label, max, desc });
     }
     if (!items.length || items.length > MAX_CRIT) return toast(`Keep between 1 and ${MAX_CRIT} criteria.`, "warn");
     if (items.reduce((n, c) => n + c.max, 0) !== 100) return toast("The maximums must add up to exactly 100.", "warn");

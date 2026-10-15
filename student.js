@@ -2,7 +2,7 @@ import { auth, db, $, esc } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { collection, query, where, onSnapshot, getDoc, getDocs, doc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { DESTS } from "./destinations.js";
-import { printReport, loadCriteria, rubricOf, scoreRaw } from "./report.js";
+import { printReport, loadCriteria, rubricOf, scoreRaw, CRIT } from "./report.js";
 import { toast, ask, niceError } from "./toast.js";
 
 let me = null, evals = [], first = true, mods = [], curDest = DESTS[0];
@@ -20,6 +20,7 @@ onAuthStateChanged(auth, async user => {
     $("who").textContent = me.fullname || "Student";
     await loadCriteria();
     renderProfile();
+    renderCriteria();
     document.body.style.visibility = "visible";
 
     if (me.status === "pending") toast("Your account is still waiting for your instructor's approval.", "warn");
@@ -41,6 +42,10 @@ onAuthStateChanged(auth, async user => {
         $("resultList").innerHTML = '<p class="hint">No results yet.</p>';
     }
 });
+
+function renderCriteria() {
+    $("critBody").innerHTML = `<div class="crit-list">${CRIT.map(([k, l, m, d]) => `<div class="crit-item"><div class="crit-item-top"><b>${esc(l)}</b><span class="max-pill">${m} pts</span></div>${d ? `<p>${esc(d)}</p>` : ""}</div>`).join("")}</div>`;
+}
 
 function renderProfile() {
     const exp = toDate(me.expiresAt), expired = exp && exp < new Date();

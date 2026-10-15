@@ -410,7 +410,7 @@ function openEval(s) {
         const played = !!marks[markId(s.id, i + 1)];
         return `<th>Map ${i + 1}<small>${esc(d)}</small>${played ? '<span class="chip ok">Finished</span>' : '<span class="chip">Not played yet</span>'}</th>`;
     }).join("")}</tr>`;
-    $("evalBody").innerHTML = CRIT.map(([k, l, m]) => `<tr><td class="crit-lbl">${esc(l)} <span class="max-pill">max ${m}</span></td>
+    $("evalBody").innerHTML = CRIT.map(([k, l, m, d]) => `<tr><td class="crit-lbl">${esc(l)} <span class="max-pill">max ${m}</span>${d ? `<small class="crit-d">${esc(d)}</small>` : ""}</td>
           ${DESTS.map((d, i) => `<td><input class="eval-in" type="number" step="0.5" min="0" max="${m}" data-lv="${i + 1}" data-k="${k}" data-max="${m}" placeholder="0-${m}" value="${scoreRaw(evs[i], k)}"></td>`).join("")}</tr>`).join("")
         + `<tr class="tot"><td>Total <small>(of 100)</small></td>${evs.map((e, i) => `<td><b class="evTotal" data-lv="${i + 1}">${e.total != null ? (+e.total).toFixed(1) : "-"}</b></td>`).join("")}</tr>`
         + `<tr><td>Status</td>${evs.map(e => `<td>${e.status === "submitted" ? '<span class="chip ok">Released</span>' : e.status === "draft" ? '<span class="chip warn">Draft</span>' : '<span class="chip">Not graded</span>'}</td>`).join("")}</tr>`;

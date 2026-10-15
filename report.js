@@ -4,19 +4,21 @@ import { getDoc, doc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-
 // The grading criteria: [key, label, max points]. The admin can rename, add and remove them (saved in settings/criteria).
 // The list always adds up to 100 points. CRIT is updated in place, so every page that reads it sees the new rubric.
 export const DEFAULT_CRIT = [
-    ["content", "Content Accuracy", 25],
-    ["delivery", "Delivery & Communication", 20],
-    ["navigation", "Tour Sequence & Navigation", 15],
-    ["timeMgmt", "Time Management", 15],
-    ["problemSolving", "Problem-Solving & Tourist Handling", 15],
-    ["language", "Language Proficiency", 10]
+    ["content", "Content Accuracy", 25, "The facts about the place, its history, and your answers are correct and complete."],
+    ["delivery", "Delivery & Communication", 20, "You speak clearly and confidently, with a good voice, pace, and tone."],
+    ["navigation", "Tour Sequence & Navigation", 15, "You visit the stops in the right order and lead the tourist along the path."],
+    ["timeMgmt", "Time Management", 15, "You finish each stop and each answer within the time limit."],
+    ["problemSolving", "Problem-Solving & Tourist Handling", 15, "You answer the tourist's questions politely and handle unexpected situations calmly."],
+    ["language", "Language Proficiency", 10, "Your grammar and word choice are correct and easy to understand."]
 ];
+// The short explanation of a default criterion (used when the admin has not written one yet)
+const defaultDesc = key => { const r = DEFAULT_CRIT.find(c => c[0] === key); return r ? r[3] : ""; };
 export const CRIT = DEFAULT_CRIT.map(r => r.slice());
 // Older evaluations were saved with these five fixed criteria
 const LEGACY = [["knowledge", "Knowledge", 35], ["timeMgmt", "Time Management", 20], ["navigation", "Navigation", 20], ["problemSolving", "Problem-Solving", 15], ["completion", "Completion", 10]];
 
 export function applyCriteria(d) {
-    const items = d && Array.isArray(d.items) && d.items.length ? d.items.map(i => [i.key, i.label, i.max]) : DEFAULT_CRIT;
+    const items = d && Array.isArray(d.items) && d.items.length ? d.items.map(i => [i.key, i.label, i.max, (typeof i.desc === "string" && i.desc.trim()) ? i.desc : defaultDesc(i.key)]) : DEFAULT_CRIT;
     CRIT.length = 0;
     items.forEach(r => CRIT.push(r.slice()));
 }
