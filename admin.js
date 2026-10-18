@@ -283,7 +283,7 @@ $("teacherForm").addEventListener("submit", async e => {
                 // The ID was used before (teacher removed earlier): re-use it if the password matches
                 if ((err.code || "").includes("email-already-in-use")) {
                     try { cred = await signInWithEmailAndPassword(auth2, login, pass); }
-                    catch (e2) { return toast("This Employee ID was used before. Type the same password it had, or ask the developer to reset it.", "err"); }
+                    catch (e2) { return toast("This EMAIL already has a login (it is still in Firebase Authentication). Use a different email, or delete that email under Authentication > Users first.", "err"); }
                 } else throw err;
             }
             await setDoc(doc(db, "teachers", cred.user.uid), { name, employeeId: emp, email: login, sections: uniq(secs) });
