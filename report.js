@@ -76,9 +76,10 @@ export function printReport({ name, id, section, instructor, rows, asked }) {
       </tbody></table>
       ${sorted.some(r => r.remarks) ? `<div class="pr-remarks"><b>Remarks</b>${sorted.filter(r => r.remarks).map(r => `<div class="pr-rem-item"><strong>${esc(r.destination)}</strong><p>${esc(r.remarks)}</p></div>`).join("")}</div>` : ""}
       <p class="pr-sum">Levels evaluated: ${sorted.length} &middot; Overall grade (score ÷ total × 100): ${avg.toFixed(1)} / 100</p>
-      <div class="pr-sign"><div><span></span>Instructor: ${esc(instructor || "")}</div><div><span></span>Date</div></div>`;
+      <div class="pr-sign"><div><span></span><b>${esc(instructor || "")}</b><br>Instructor</div><div><span></span>Date</div></div>`;
 
-    openPrint("DejaView Report - " + name);
+    const clean = t => String(t || "").replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "_").trim();
+    openPrint("DejaView_Report_" + clean(name) + (id ? "_" + clean(id) : ""));
 }
 
 // Prints whatever is inside #printArea (choose "Save as PDF" as the destination)

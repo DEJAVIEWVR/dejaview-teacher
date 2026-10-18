@@ -556,8 +556,7 @@ function openView(s) {
         const e = evs[i];
         return `<div class="rem-view"><b>Map ${i + 1} &middot; ${esc(d)}</b><p class="${e && e.remarks ? "" : "none"}">${e && e.remarks ? esc(e.remarks) : "No remarks."}</p></div>`;
     }).join("");
-    if (!$("viewAsked")) $("viewRemarks").insertAdjacentHTML("afterend", '<div id="viewAsked"></div>');
-    $("viewAsked").innerHTML = askedHtml(s, esc);
+    if ($("viewAsked")) $("viewAsked").innerHTML = "";   // the list of questions asked is no longer shown
     $("viewDialog").showModal();
 }
 // The questions this student was really asked (saved by the game when the map starts)
