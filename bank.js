@@ -110,9 +110,31 @@ function ensureSecBox() {
     $("qStopRow").insertAdjacentHTML("afterend", `<div id="qSecRow"><label>Which sections get this question?</label>
         <label class="inl" id="qAllWrap"><input type="checkbox" id="qAll"> All sections</label>
         <div class="checks" id="qSecs"></div></div>`);
-    $("qSpeaker").insertAdjacentHTML("beforebegin", '<select id="qSpeakerSel"></select>');
-    $("qSpeakerSel").addEventListener("change", () => { $("qSpeaker").hidden = $("qSpeakerSel").value !== "__other"; if (!$("qSpeaker").hidden) $("qSpeaker").focus(); });
+    // the speaker is chosen automatically: it is the NPC who is at that stop (no dropdown to confuse the teacher)
+    const spLabel = document.querySelector('label[for="qSpeaker"]');
+    if (spLabel) spLabel.style.display = "none";
+    $("qSpeaker").style.display = "none";
+    $("qSpeaker").insertAdjacentHTML("afterend", '<div id="qWho" class="who-box"></div>');
+    $("qStop").addEventListener("change", setWho);
     $("qAll").addEventListener("change", () => { document.querySelectorAll("#qSecs input").forEach(c => { c.checked = $("qAll").checked; c.disabled = $("qAll").checked; }); });
+}
+
+// the character who asks the question at this stop = the character of that stop's original question
+function placeNpc(dest, slotNo) {
+    const originals = qs.filter(x => x.destinationID === dest && !x.isExtra).sort((a, b) => (a.order || 0) - (b.order || 0));
+    const own = originals[slotNo - 1];
+    if (own && (own.speakerNPC || "").trim()) return own.speakerNPC.trim();
+    const count = {};
+    originals.forEach(x => { const n = (x.speakerNPC || "").trim(); if (n) count[n] = (count[n] || 0) + 1; });
+    const top = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
+    return top ? top[0] : "Tourist";
+}
+function setWho() {
+    const dest = editing ? editing.destinationID : sel.value;
+    const slot = editing ? (Number.isInteger(editing.slot) ? editing.slot : 1) : Number($("qStop").value) || 1;
+    const npc = (editing && (editing.speakerNPC || "").trim()) || placeNpc(dest, slot);
+    $("qSpeaker").value = npc;
+    $("qWho").innerHTML = `<b>Asked by:</b> ${esc(npc)} <span>(the character at this stop, chosen automatically)</span>`;
 }
 
 function openForm(x, slot) {
@@ -124,13 +146,7 @@ function openForm(x, slot) {
     $("qStopRow").hidden = !!x;
     $("qStopRow").querySelector("label").textContent = "Which question number is this for?";
     $("qTitle").textContent = x ? "Edit question" : "Add a question";
-    const known = [...new Set([...NPCS, ...qs.map(q => (q.speakerNPC || "").trim()).filter(Boolean)])];
-    const cur = (x?.speakerNPC || "Tourist").trim();
-    $("qSpeakerSel").innerHTML = known.map(n => `<option>${esc(n)}</option>`).join("") + '<option value="__other">Other...</option>';
-    const hit = known.find(n => n.toLowerCase() === cur.toLowerCase());
-    $("qSpeakerSel").value = hit || "__other";
-    $("qSpeaker").value = hit || cur;
-    $("qSpeaker").hidden = !!hit;
+    setWho();
     $("qText").value = x?.questionText || "";
     $("qKey").value = x?.keyPoints || "";
     // sections
@@ -145,7 +161,7 @@ function openForm(x, slot) {
 
 $("qForm").addEventListener("submit", async e => {
     e.preventDefault();
-    const text = $("qText").value.trim(), speaker = ($("qSpeakerSel").value === "__other" ? $("qSpeaker").value : $("qSpeakerSel").value).trim(), key = $("qKey").value.trim();
+    const text = $("qText").value.trim(), speaker = $("qSpeaker").value.trim(), key = $("qKey").value.trim();
     if (text.length < 3) return toast("Type the question first.", "warn");
     if (!speaker) return toast("Type the speaker's name.", "warn");
     const dest = editing ? editing.destinationID : sel.value;

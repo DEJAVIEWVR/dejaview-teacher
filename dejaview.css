@@ -613,3 +613,9 @@ body.paged main > section .sec-head + .tabs{margin-top:4px}
 #evalRemarks .rem-box label{font-size:.92rem;font-weight:700;color:var(--m)}
 #evalRemarks .rem-box textarea{background:#fff;border:1px solid #e7ddd3;border-radius:8px;min-height:60px;overflow:hidden;resize:none;padding:9px 12px;line-height:1.45}
 #evalRemarks .rem-count{font-size:.74rem}
+
+/* Question Bank: who asks the question (automatic) */
+.who-box{margin:2px 0 10px;padding:10px 14px;background:#faf7f4;border-left:4px solid var(--m);border-radius:8px;font-size:.95rem}
+.who-box span{color:var(--mut);font-size:.82rem}
+
+.who-box{text-align:left!important;display:block}
