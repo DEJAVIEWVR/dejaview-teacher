@@ -186,10 +186,12 @@ function openForm(m) {
     $("mTitle").value = m && !isStop(m) ? (m.title || "") : "";
     const list = (ALL_STOPS[dest] || STOPS[dest] || []).filter(Boolean), cur = m && isStop(m) ? (m.stop || m.title || "") : "";
     const known = list.some(s => s.toLowerCase() === cur.toLowerCase());
-    $("mStopSel").innerHTML = `<option value="">Choose a stop</option>` + list.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("") + `<option value="__other">Other...</option>`;
-    $("mStopSel").value = !cur ? "" : (known ? list.find(s => s.toLowerCase() === cur.toLowerCase()) : "__other");
-    $("mStop").value = known ? "" : cur;
-    $("mStop").hidden = $("mStopSel").value !== "__other";
+    // no "Other..." choice: only the stops of this map. (An older stop with another name is still shown so it can be edited.)
+    const opts = (!known && cur) ? [...list, cur] : list;
+    $("mStopSel").innerHTML = `<option value="">Choose a stop</option>` + opts.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
+    $("mStopSel").value = !cur ? "" : (opts.find(s => s.toLowerCase() === cur.toLowerCase()) || "");
+    $("mStop").value = "";
+    $("mStop").hidden = true;
     $("mContent").value = m?.content || ""; $("mLink").value = m?.link || "";
     const im = Array.isArray(m?.images) ? m.images : [];
     for (let i = 0; i < 4; i++) { slots[i] = im[i]?.url || ""; $("mImgCap" + i).value = im[i]?.caption || ""; paintSlot(i); }
