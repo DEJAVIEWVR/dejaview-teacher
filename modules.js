@@ -1,7 +1,7 @@
 import { auth, db, $, esc } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { collection, getDocs, getDoc, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { DESTS, STOPS } from "./destinations.js";
+import { DESTS, STOPS, ALL_STOPS } from "./destinations.js";
 import { toast, ask, niceError, busy } from "./toast.js";
 
 let mods = [], editing = null, current = DESTS[0];
@@ -183,7 +183,7 @@ function openForm(m) {
     $("mTitleHead").textContent = m ? "Edit" : "Add to " + dest;
     $("mKind").value = m && isStop(m) ? "stop" : "lesson";
     $("mTitle").value = m && !isStop(m) ? (m.title || "") : "";
-    const list = (STOPS[dest] || []).filter(Boolean), cur = m && isStop(m) ? (m.stop || m.title || "") : "";
+    const list = (ALL_STOPS[dest] || STOPS[dest] || []).filter(Boolean), cur = m && isStop(m) ? (m.stop || m.title || "") : "";
     const known = list.some(s => s.toLowerCase() === cur.toLowerCase());
     $("mStopSel").innerHTML = `<option value="">Choose a stop</option>` + list.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("") + `<option value="__other">Other...</option>`;
     $("mStopSel").value = !cur ? "" : (known ? list.find(s => s.toLowerCase() === cur.toLowerCase()) : "__other");

@@ -439,11 +439,12 @@ function openEval(s) {
         + `<tr><td>Status</td>${evs.map((e, i) => `<td data-st="${i + 1}">${e.status === "submitted" ? '<span class="chip ok">Released <i class="ico ico-lock"></i></span>' : e.status === "draft" ? '<span class="chip warn">Draft</span>' : '<span class="chip">Not graded</span>'}</td>`).join("")}</tr>`;
     $("evalRemarks").innerHTML = DESTS.map((d, i) => {
         const e = evals[evalId(s.id, i + 1)] || {}, txt = e.remarks || "";
-        return `<div class="rem-box"><label for="rem${i + 1}">Remarks &middot; Map ${i + 1}: ${esc(d)}</label>
+        return `<div class="rem-box"><label for="rem${i + 1}">Map ${i + 1} &middot; ${esc(d)}</label>
           <textarea class="rem" id="rem${i + 1}" data-lv="${i + 1}" rows="3" maxlength="200" ${lockedLv.has(i + 1) ? "disabled" : ""} placeholder="Optional. Write your comments for this map (up to 200 characters).">${esc(txt)}</textarea>
           <span class="rem-count">${txt.length} / 200</span></div>`;
     }).join("");
     $("evalDialog").showModal();
+    $("evalRemarks").querySelectorAll(".rem").forEach(grow);
 }
 
 $("evalBody").addEventListener("input", e => {
@@ -472,10 +473,13 @@ $("evalBody").addEventListener("change", e => {
     }
 });
 
+// the remark box grows with the text, so there is no tiny scrollbar inside it
+function grow(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + 2 + "px"; }
 $("evalRemarks").addEventListener("input", e => {
     const ta = e.target.closest(".rem"); if (!ta) return;
     dirty = true;
     ta.parentElement.querySelector(".rem-count").textContent = `${ta.value.length} / 200`;
+    grow(ta);
 });
 
 // "Edit" above a released map: unlock it (the student keeps seeing the old score until you press Submit & release again)

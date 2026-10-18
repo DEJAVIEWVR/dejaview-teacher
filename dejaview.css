@@ -606,3 +606,10 @@ body.paged main > section .sec-head > div{width:100%}
 body.paged main > section .sec-head h2{width:100%;box-sizing:border-box}
 body.paged main > section .sec-head #addMod{position:absolute;right:0;top:calc(100% + 18px)}
 body.paged main > section .sec-head + .tabs{margin-top:4px}
+
+/* Remarks (Evaluate window): one card per map, stacked, same look as the student's Remarks view */
+#evalRemarks.rem-grid{display:flex;flex-direction:column;gap:10px;margin:8px 0 4px}
+#evalRemarks .rem-box{background:#faf7f4;border-left:4px solid var(--m);border-radius:8px;padding:10px 14px;gap:6px}
+#evalRemarks .rem-box label{font-size:.92rem;font-weight:700;color:var(--m)}
+#evalRemarks .rem-box textarea{background:#fff;border:1px solid #e7ddd3;border-radius:8px;min-height:60px;overflow:hidden;resize:none;padding:9px 12px;line-height:1.45}
+#evalRemarks .rem-count{font-size:.74rem}

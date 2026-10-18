@@ -1,7 +1,7 @@
 import { auth, db, $, esc } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { collection, getDocs, getDoc, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { DESTS, STOPS, MAX_SLOTS } from "./destinations.js";
+import { DESTS, STOPS, MAX_SLOTS, STOP_NOS } from "./destinations.js";
 import { printHtml } from "./report.js";
 import { toast, ask, niceError, busy } from "./toast.js";
 
@@ -64,7 +64,7 @@ function groupsFor(d) {
     if (MAX_SLOTS[d]) n = Math.min(n, MAX_SLOTS[d]);
     const groups = [];
     for (let i = 0; i < n; i++)
-        groups.push({ no: i + 1, name: names[i] || "", items: base[i] ? [base[i]] : [] });
+        groups.push({ no: i + 1, tag: STOP_NOS[d] ? "Stop " + (STOP_NOS[d][i] || i + 1) : "Question " + (i + 1), name: names[i] || "", items: base[i] ? [base[i]] : [] });
     const other = [];
     all.filter(x => x.isExtra).sort((a, b) => made(a) - made(b)).forEach(x => {
         let g = Number.isInteger(x.slot) ? groups.find(k => k.no === x.slot) : null;
@@ -98,7 +98,7 @@ function render() {
         const btn = added >= MAX_PER_STOP ? `<span class="hint">Limit reached (${MAX_PER_STOP} added by you).</span>`
             : (!IS_ADMIN_PAGE && !mySecs.length) ? ""
             : `<button class="add-button" data-q="add" data-slot="${g.no}">+ Add question</button>`;
-        return `<section class="qstop"><div class="qstop-h"><div><h3>Question ${g.no}${g.name ? " · " + esc(g.name) : ""}</h3>
+        return `<section class="qstop"><div class="qstop-h"><div><h3>${g.tag}${g.name ? " · " + esc(g.name) : ""}</h3>
             <small class="hint">${g.items.length} question${g.items.length === 1 ? "" : "s"} you can see${g.items.length > 1 ? " · each student gets 1 at random" : ""}</small></div>${btn}</div>
             ${g.items.map((x, n) => card(x, n + 1)).join("") || '<p class="hint">No question here yet.</p>'}</section>`;
     }).join("") + (other.length ? `<section class="qstop"><div class="qstop-h"><div><h3>Other added questions</h3><small class="hint">Older extra questions that are not tied to a question number.</small></div></div>${other.map((x, n) => card(x, n + 1)).join("")}</section>` : "")
@@ -119,7 +119,7 @@ function openForm(x, slot) {
     editing = x || null;
     ensureSecBox();
     const gs = groupsFor(sel.value).groups;
-    $("qStop").innerHTML = gs.map(g => `<option value="${g.no}">Question ${g.no}${g.name ? " · " + esc(g.name) : ""}</option>`).join("");
+    $("qStop").innerHTML = gs.map(g => `<option value="${g.no}">${g.tag}${g.name ? " · " + esc(g.name) : ""}</option>`).join("");
     if (slot) $("qStop").value = String(slot);
     $("qStopRow").hidden = !!x;
     $("qStopRow").querySelector("label").textContent = "Which question number is this for?";
@@ -200,7 +200,7 @@ $("printQ").addEventListener("click", () => {
     const body = DESTS.map((d, i) => {
         const { groups, other } = groupsFor(d);
         return `<h3 style="margin:18px 0 6px;color:#a50012">Map ${i + 1}: ${esc(d)}</h3>` +
-            (groups.map(g => `<h4 style="margin:10px 0 2px">Question ${g.no}${g.name ? " &ndash; " + esc(g.name) : ""}</h4>` + (g.items.map((x, n) => row(x, n + 1)).join("") || "<p><i>No question.</i></p>")).join("")
+            (groups.map(g => `<h4 style="margin:10px 0 2px">${g.tag}${g.name ? " &ndash; " + esc(g.name) : ""}</h4>` + (g.items.map((x, n) => row(x, n + 1)).join("") || "<p><i>No question.</i></p>")).join("")
             + (other.length ? `<h4 style="margin:10px 0 2px">Other added questions</h4>` + other.map((x, n) => row(x, n + 1)).join("") : "") || "<p>No questions.</p>");
     }).join("");
     toast("Choose \"Save as PDF\" in the print window.", "info");

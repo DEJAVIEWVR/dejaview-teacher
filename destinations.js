@@ -8,8 +8,15 @@ export const TERM_MONTHS = 6;    // how long a student account stays valid after
 export const STOPS = {
     // One entry per question, in the order students meet them. "" = this question has no stop name yet (shown as "Question N").
     "Our Lady of Lourdes Grotto": ["the statue", "the bridge", "GROTTO BUILDING", "", ""],   // 3 outside + 2 inside the Grotto
-    "Mt. Balagbag": ["", "balagbag resort", "", "", ""],
+    "Mt. Balagbag": ["INN", "balagbag resort", "rock picture spot", "rock picture spot 2", "peak", "stall"],   // the 6 stops that ask a question
     "Padre Pio": []
 };
 // The most questions a map asks (extra questions beyond this are never used by the game)
-export const MAX_SLOTS = { "Mt. Balagbag": 5 };
+export const MAX_SLOTS = { "Mt. Balagbag": 6 };
+// EVERY stop in the order students visit it (stops that only teach history are included). Used for the Training Modules "Stop story" list.
+// If a map is not listed here, the STOPS list above is used.
+export const ALL_STOPS = {
+    "Mt. Balagbag": ["INN", "balagbag resort", "mtbalagbagtrail", "rock picture spot", "rock picture spot 2", "peak", "stall"]   // mtbalagbagtrail = history only, no question
+};
+// The real stop number of each question (for maps that also have history-only stops). Mt. Balagbag: stop 3 has no question.
+export const STOP_NOS = { "Mt. Balagbag": [1, 2, 4, 5, 6, 7] };
