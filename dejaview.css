@@ -84,7 +84,7 @@ dialog input,dialog textarea,dialog select{width:100%;margin-bottom:6px}
 .tab.active{background:var(--m);color:#fff}
 .tab .count{background:rgba(0,0,0,.12);border-radius:10px;padding:0 8px;margin-left:8px;font-size:.75rem}
 .tab.active .count{background:rgba(255,255,255,.25)}
-.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
 .mod-card{background:#fff;border:1px solid #eee;border-left:5px solid var(--m);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.05);transition:transform .15s,box-shadow .15s}
 .mod-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.1)}
 .mod-top{display:flex;justify-content:space-between;align-items:center}
@@ -456,3 +456,153 @@ select.pick:focus{border-color:var(--m);box-shadow:0 0 0 3px rgba(165,0,18,.15);
 .arch-box summary:hover{color:var(--m)}
 .arch-box[hidden]{display:none}
 .arch-box .arch-item{background:#fff;padding:10px 14px;border:1px solid #eee;border-radius:10px;margin-top:8px}
+
+
+/* ---- dialogs with a fixed header (X) and fixed buttons: only the middle scrolls ---- */
+dialog.dlg-fixed{padding:0;max-height:92vh;overflow:hidden}
+dialog.dlg-fixed[open]{display:flex;flex-direction:column}
+.dlg-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 22px 10px;border-bottom:1px solid #eee;background:#fff}
+.dlg-top h2{margin:0 0 2px}
+.dlg-top .hint{margin:0}
+.dlg-x{flex:none;width:40px;height:40px;border-radius:50%;border:1.5px solid #ddd;background:#fff;color:#555;font-size:1.05rem;line-height:1;cursor:pointer;padding:0}
+.dlg-x:hover{color:var(--m);border-color:var(--m)}
+.dlg-scroll{overflow:auto;padding:12px 22px;flex:1 1 auto;min-height:0}
+dialog .row.dlg-foot{margin:0;padding:12px 22px;border-top:1px solid #eee;background:#fff}
+.unlock-btn{display:block;margin:6px auto 0;background:#fff;color:var(--m);border:1.5px solid var(--m);border-radius:999px;padding:4px 12px;font-size:.75rem;font-weight:700;cursor:pointer}
+.unlock-btn:hover{background:var(--m);color:#fff}
+.eval-in:disabled,.rem:disabled{background:#f3efe9;color:#444;cursor:not-allowed}
+
+/* ---- printed pages: breathing room inside the page ---- */
+@media print{
+  @page{size:A4;margin:16mm 14mm}
+  body.print-report #printArea{padding:4mm 3mm}
+  .pr-head{margin-bottom:16px;padding-bottom:12px}
+  .pr-info{margin-bottom:14px}
+  .pr-info td{padding:5px 10px}
+  .pr-table th,.pr-table td{padding:8px 9px}
+  .pr-remarks{margin-top:18px}
+  .pr-sum{margin:14px 0}
+  .pr-sign{margin-top:70px}
+}
+
+.eval-in.shake{animation:dvshake .4s;border-color:#b3261e}
+@keyframes dvshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+/* ---- module pictures: neat thumbnails (whole picture visible), click to enlarge ---- */
+.mgrid{align-items:start}
+.mod-imgs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.mod-imgs.one{grid-template-columns:1fr}
+.mod-imgs figure{margin:0;background:#faf7f4;border:1px solid #eee;border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.mod-imgs .pic{display:block;width:100%;height:150px;padding:0;border:0;background:#f1ece7;cursor:zoom-in;position:relative}
+.mod-imgs.one .pic{height:240px}
+.mod-imgs .pic::after{content:"\1F50D";position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.55);color:#fff;border-radius:50%;width:26px;height:26px;display:grid;place-items:center;font-size:.8rem;opacity:0;transition:opacity .15s}
+.mod-imgs .pic:hover::after{opacity:1}
+.mod-imgs img{width:100%;height:100%;object-fit:contain;border:0;border-radius:0;background:#f1ece7;display:block}
+.mod-imgs figcaption{font-size:.8rem;color:var(--ink);line-height:1.4;padding:8px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+dialog.zoom-dlg{border:0;border-radius:16px;padding:14px;max-width:min(94vw,1000px);width:auto;background:#fff;text-align:center}
+dialog.zoom-dlg::backdrop{background:rgba(0,0,0,.7)}
+.zoom-dlg img{max-width:100%;max-height:78vh;object-fit:contain;display:block;margin:0 auto;border-radius:8px}
+.zoom-dlg p{margin:10px 6px 2px;line-height:1.5;color:var(--ink)}
+.zoom-x{position:absolute;top:8px;right:8px;z-index:2}
+
+/* ---- notifications ---- */
+dialog.note-dlg{width:min(520px,94vw);padding:0;border-radius:18px;overflow:hidden}
+.note-dlg h2{margin:0;padding:18px 22px 4px;font-family:Georgia,serif;color:var(--m)}
+.note-dlg .hint{margin:0;padding:0 22px 12px}
+.note-dlg #noteBody{padding:4px 16px 8px;max-height:60vh;overflow:auto}
+.note-dlg .row{padding:12px 16px 16px}
+.note{display:flex;align-items:center;gap:12px;border:1px solid #f0e3c4;border-left:5px solid var(--g);background:#fff8e8;border-radius:12px;padding:12px 14px;margin:8px 0;transition:background .2s}
+.note .ic{flex:none;width:38px;height:38px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:1.15rem;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.note .nt{flex:1;min-width:0}
+.note .nt b{display:block;font-size:.95rem}
+.note .nt span{display:block;font-size:.82rem;color:var(--mut);line-height:1.35;margin-top:2px}
+.note .nstate{flex:none;font-size:.68rem;font-weight:800;letter-spacing:.5px;border-radius:10px;padding:3px 9px;background:#b3261e;color:#fff}
+.note.unread{box-shadow:0 3px 10px rgba(0,0,0,.1)}
+.note.err.unread{background:#fde2e0;border-color:#f3c0bb;border-left-color:#b3261e}
+.note.read{background:#f4f2f0;border-color:#e6e2de;border-left-color:#cfc9c4;box-shadow:none}
+.note.read .nt b{font-weight:600;color:#6b6460}
+.note.read .nt span{color:#938c87}
+.note.read .ic{box-shadow:none;opacity:.7;filter:grayscale(.6)}
+.note.read .nstate{background:transparent;color:#2e9c4f;font-weight:700}
+.note.ok.read{background:#eaf7ee;border-color:#cfe9d6;border-left-color:#2e9c4f}
+.note.ok.read .nt b{color:#1f5c27}
+
+/* ---- question bank grouped by stop ---- */
+.qstop{background:#fff;border:1px solid #eee;border-left:5px solid var(--m);border-radius:14px;padding:14px 16px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.qstop-h{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.qstop-h h3{margin:0;font-family:Georgia,serif;color:var(--m);font-size:1.1rem}
+.qstop .qcard{background:#faf7f4}
+
+.cap-card .hint{line-height:1.5;margin:4px 0}
+.cap-card .chip{display:inline-block;margin-top:2px}
+
+/* Section tick boxes inside dialogs (Question Bank): box and name on one line, in two columns */
+dialog input[type=checkbox]{width:18px;height:18px;margin:0;flex:none;accent-color:var(--m)}
+dialog .checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px 12px;max-height:200px}
+dialog .checks label,dialog label.inl{display:flex;align-items:center;gap:8px;margin:0;font-size:.9rem;font-weight:600;cursor:pointer}
+dialog label.inl{margin:6px 0}
+#qSpeakerSel{margin-bottom:6px}
+.mod-by{font-size:.78rem;color:var(--mut);margin:2px 0 6px}
+
+/* ---- criteria editor: compact (less empty space) ---- */
+#criteria .hint{margin:8px 0 12px;font-size:.84rem;line-height:1.4}
+.crit-card{max-width:900px;padding:12px 16px}
+.crit-head,.crit-row{grid-template-columns:minmax(0,1fr) minmax(0,1.8fr) 62px 26px 28px;gap:6px}
+.crit-head{padding:0 0 4px;font-size:.72rem}
+.crit-row{margin:0 0 5px}
+.crit-row input{margin:0;padding:5px 9px;font-size:.86rem;height:32px;box-sizing:border-box}
+.crit-row .crit-max{padding:5px 4px}
+.crit-row>span{font-size:.82rem;color:var(--mut)}
+.crit-del{width:26px;height:26px;font-size:.7rem}
+#critAdd{margin:4px 0 0;padding:6px 12px;font-size:.85rem}
+.crit-total{margin:8px 0 4px;font-size:.92rem}
+.crit-actions{margin:6px 0 4px;gap:8px}
+.crit-actions button{padding:7px 14px;font-size:.86rem;margin:0}
+.crit-card .hint{margin:6px 0 0;font-size:.78rem}
+/* criteria card fills the whole page width */
+#criteria .crit-card{max-width:none;width:100%;box-sizing:border-box;padding:16px 20px}
+.crit-head,.crit-row{grid-template-columns:minmax(0,1fr) minmax(0,2.2fr) 90px 30px 30px}
+/* criteria rows: a little more breathing room inside */
+#criteria .crit-card{padding:22px 26px}
+.crit-head,.crit-row{gap:12px}
+.crit-head{padding:0 0 10px;font-size:.78rem}
+.crit-row{margin:0 0 12px}
+.crit-row input{height:42px;padding:8px 14px;font-size:.92rem}
+.crit-row .crit-max{padding:8px 6px}
+.crit-del{width:30px;height:30px;font-size:.78rem}
+#critAdd{margin:8px 0 0;padding:9px 16px;font-size:.9rem}
+.crit-total{margin:16px 0 8px;font-size:.95rem}
+.crit-actions{margin:10px 0 8px;gap:10px}
+.crit-actions button{padding:10px 18px;font-size:.9rem}
+.crit-card .hint{margin:12px 0 0}
+
+/* ---- icons (replace emojis): <i class="ico ico-bell"></i> ---- */
+.ico{display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;background-color:currentColor;-webkit-mask:var(--svg) center/contain no-repeat;mask:var(--svg) center/contain no-repeat;flex:none}
+.caret .ico{width:1em;height:1em}
+.ico-bell{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9%22/%3E%3Cpath d=%22M10.3 21a1.94 1.94 0 0 0 3.4 0%22/%3E%3C/svg%3E")}
+.ico-user{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2%22/%3E%3Ccircle cx=%2212%22 cy=%227%22 r=%224%22/%3E%3C/svg%3E")}
+.ico-users{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2%22/%3E%3Ccircle cx=%229%22 cy=%227%22 r=%224%22/%3E%3Cpath d=%22M22 21v-2a4 4 0 0 0-3-3.87%22/%3E%3Cpath d=%22M16 3.13a4 4 0 0 1 0 7.75%22/%3E%3C/svg%3E")}
+.ico-alert{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z%22/%3E%3Cpath d=%22M12 9v4%22/%3E%3Cpath d=%22M12 17h.01%22/%3E%3C/svg%3E")}
+.ico-check{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M20 6 9 17l-5-5%22/%3E%3C/svg%3E")}
+.ico-checkc{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M22 11.08V12a10 10 0 1 1-5.93-9.14%22/%3E%3Cpath d=%22m22 4-10 10.01-3-3%22/%3E%3C/svg%3E")}
+.ico-teacher{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M22 10 12 5 2 10l10 5 10-5z%22/%3E%3Cpath d=%22M6 12v5c3 3 9 3 12 0v-5%22/%3E%3C/svg%3E")}
+.ico-edit{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z%22/%3E%3C/svg%3E")}
+.ico-book{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20%22/%3E%3C/svg%3E")}
+.ico-key{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m21 2-9.6 9.6%22/%3E%3Ccircle cx=%227.5%22 cy=%2215.5%22 r=%225.5%22/%3E%3Cpath d=%22m15.5 7.5 3 3L22 7l-3-3%22/%3E%3C/svg%3E")}
+.ico-logout{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4%22/%3E%3Cpath d=%22m16 17 5-5-5-5%22/%3E%3Cpath d=%22M21 12H9%22/%3E%3C/svg%3E")}
+.ico-dash{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%223%22 width=%227%22 height=%229%22/%3E%3Crect x=%2214%22 y=%223%22 width=%227%22 height=%225%22/%3E%3Crect x=%2214%22 y=%2212%22 width=%227%22 height=%229%22/%3E%3Crect x=%223%22 y=%2216%22 width=%227%22 height=%225%22/%3E%3C/svg%3E")}
+.ico-x{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M18 6 6 18%22/%3E%3Cpath d=%22m6 6 12 12%22/%3E%3C/svg%3E")}
+.ico-link{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71%22/%3E%3Cpath d=%22M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71%22/%3E%3C/svg%3E")}
+.ico-play{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpolygon points=%226 3 20 12 6 21 6 3%22/%3E%3C/svg%3E")}
+.ico-file{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z%22/%3E%3Cpath d=%22M14 2v6h6%22/%3E%3C/svg%3E")}
+.ico-doc{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z%22/%3E%3Cpath d=%22M14 2v6h6%22/%3E%3Cpath d=%22M16 13H8%22/%3E%3Cpath d=%22M16 17H8%22/%3E%3Cpath d=%22M10 9H8%22/%3E%3C/svg%3E")}
+.ico-lock{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%2211%22 width=%2218%22 height=%2211%22 rx=%222%22/%3E%3Cpath d=%22M7 11V7a5 5 0 0 1 10 0v4%22/%3E%3C/svg%3E")}
+.ico-down{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E")}
+.ico-clock{--svg:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Cpath d=%22M12 6v6l4 2%22/%3E%3C/svg%3E")}
+
+/* Training Modules: the title banner is full width like the other pages; Add Module sits inside it */
+body.paged main > section .sec-head{display:block;position:relative}
+body.paged main > section .sec-head > div{width:100%}
+body.paged main > section .sec-head h2{width:100%;box-sizing:border-box}
+body.paged main > section .sec-head #addMod{position:absolute;right:0;top:calc(100% + 18px)}
+body.paged main > section .sec-head + .tabs{margin-top:4px}

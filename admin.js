@@ -10,8 +10,8 @@ import { collection, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc } from "
 const auth2 = getAuth(initializeApp(config, "secondary"));
 const STAFF_DOMAIN = "@staff.dejaview.app";      // teachers log in with their Employee ID
 const DEFAULT_HEAD = { headName: "Dr. Nelidiza R. Arceta", headTitle: "Department Head · BSTM Program Head" };
-let archivedList = [];
 let sections = [], teachers = [], students = [], head = { ...DEFAULT_HEAD };
+let myUid = "";
 const secNames = () => sections.map(s => s.name);
 const capOf = n => (sections.find(s => s.name === n) || {}).capacity || 45;
 const toDate = x => (x && x.toDate) ? x.toDate() : null;
@@ -26,6 +26,7 @@ onAuthStateChanged(auth, async user => {
         console.error(err);
         return location.replace("login.html");
     }
+    myUid = user.uid;
     document.body.style.visibility = "visible";   // only reached by a confirmed admin
     await loadCriteria();
     critFill(CRIT);
@@ -74,18 +75,120 @@ function render() {
         || '<p class="hint">Add sections first.</p>';
 
     const byName = (x, y) => String(x.name || "").localeCompare(String(y.name || ""));
-    const active = teachers.filter(x => !x.archived).sort(byName), archived = teachers.filter(x => x.archived).sort(byName);
-    $("teacherBody").innerHTML = active.map(x =>
-        `<tr><td>${esc(x.name)}</td><td>${esc(x.employeeId)}</td><td>${esc((x.sections || []).join(", ")) || '<span class="chip warn">None</span>'}</td>
+    const archivedView = $("teacherView").value === "archived";
+    const list = teachers.filter(x => !!x.archived === archivedView).sort(byName);
+    $("teacherCount").textContent = `${list.length} ${archivedView ? "archived" : "current"} teacher${list.length === 1 ? "" : "s"}`;
+    const you = x => x.id === myUid ? ' <span class="chip ok">You</span>' : "";
+    $("teacherBody").innerHTML = list.map(x => archivedView
+        ? `<tr><td>${esc(x.name)}${you(x)}</td><td>${esc(x.employeeId)}</td><td>${esc((x.sections || []).join(", ")) || '<span class="chip">None</span>'}</td>
+         <td><button class="edit-button" data-act="restoreTeacher" data-id="${x.id}">Restore</button></td></tr>`
+        : `<tr><td>${esc(x.name)}${you(x)}</td><td>${esc(x.employeeId)}</td><td>${esc((x.sections || []).join(", ")) || '<span class="chip warn">None</span>'}</td>
          <td><button class="edit-button" data-act="editSec" data-id="${x.id}">Sections</button>
          <button class="delete-button" data-act="archTeacher" data-id="${x.id}">Archive</button></td></tr>`).join("")
-        || '<tr><td colspan="4">No active teachers.</td></tr>';
-    archivedList = archived;
-    $("archN").textContent = archived.length ? `(${archived.length})` : "";
-    $("archBox").hidden = !archived.length;      // nothing archived = nothing to show
-    $("archBody").innerHTML = archived.map(x => `<div class="arch-item"><div><b>${esc(x.name)}</b><span>${esc(x.employeeId)} · ${esc((x.sections || []).join(", ") || "no sections")}</span></div>
-        <button type="button" class="edit-button" data-act="restoreTeacher" data-id="${esc(x.id)}">Restore</button></div>`).join("");
+        || `<tr><td colspan="4">${archivedView ? "No archived teachers. Teachers you archive appear here, and you can restore them." : "No active teachers."}</td></tr>`;
+    renderHome();
+    updateBell();
+    paintTeacherBtn();
 }
+$("teacherView").addEventListener("change", render);
+
+// ---------- home: quick numbers and one card per section ----------
+const isNew = (s, days) => { const d = toDate(s.createdAt); return d && (Date.now() - d) > days * 86400000; };
+function secStats() {
+    return sections.map(s => {
+        const mine = students.filter(x => x.section === s.name && x.status !== "archived");
+        const pend = mine.filter(x => x.status === "pending");
+        const ts = teachers.filter(t => !t.archived && (t.sections || []).includes(s.name)).map(t => t.name);
+        return { name: s.name, cap: s.capacity, reg: mine.length, pend: pend.length, late: pend.filter(x => isNew(x, 2)).length, teachers: ts };
+    });
+}
+function renderHome() {
+    const st = secStats();
+    const pend = st.reduce((n, x) => n + x.pend, 0), noT = st.filter(x => !x.teachers.length).length;
+    const tile = (n, label, cls, go) => `<a class="stat ${cls}" href="#${go}"><b>${n}</b><span>${label}</span></a>`;
+    $("statGrid").innerHTML =
+        tile(sections.length, "Sections", "", "sections") +
+        tile(teachers.filter(t => !t.archived).length, "Current teachers", "", "teachers") +
+        tile(students.filter(s => s.status === "active").length, "Active students", "", "students") +
+        tile(pend, "Waiting for approval", pend ? "hot" : "", "sections");
+    $("capGrid").innerHTML = st.map(x => {
+        const pct = Math.min(100, Math.round(x.reg / x.cap * 100));
+        return `<div class="cap-card ${x.reg >= x.cap ? "full" : ""}">
+          <h3>${esc(x.name)}</h3>
+          <div class="cap-num">${x.reg}<small> / ${x.cap} registered</small></div>
+          <div class="cap-bar"><i style="width:${pct}%"></i></div>
+          <div class="hint">${x.pend} pending approval${x.late ? ` &middot; <b style="color:#b3261e">${x.late} waiting 2+ days</b>` : ""}${x.reg > x.cap ? ` &middot; <b style="color:#b3261e">over capacity</b>` : ""}</div>
+          <div class="hint">${x.teachers.length ? "Teacher: " + esc(x.teachers.join(", ")) : '<span class="chip warn">No teacher yet</span>'}</div></div>`;
+    }).join("") || '<p class="hint">No sections yet. Open <b>Sections</b> to add them.</p>';
+}
+
+// ---------- notifications (opening the bell marks them as read, like Facebook) ----------
+function buildNotes() {
+    const notes = [], st = secStats();
+    st.filter(x => x.reg > x.cap).forEach(x => notes.push({ t: "err", h: `${x.name} is over capacity`, p: `${x.reg} registered, capacity ${x.cap}. Check for wrong sections or raise the capacity.` }));
+    st.filter(x => x.late > 0).forEach(x => notes.push({ t: "err", h: `${x.name}: ${x.late} student${x.late > 1 ? "s" : ""} waiting 2 days or more`, p: "The teacher has not approved them yet. Remind the teacher." }));
+    st.filter(x => !x.teachers.length).forEach(x => notes.push({ t: "", h: `${x.name} has no teacher`, p: `Open Teacher Accounts and press Sections on a teacher to assign ${x.name}.` }));
+    teachers.filter(t => !t.archived && !(t.sections || []).length).forEach(t => notes.push({ t: "", h: `${t.name} has no section`, p: "This teacher sees no students. Press Sections on the teacher to assign one." }));
+    return notes;
+}
+const seenKey = () => "dvSeenA_" + myUid;
+const readSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(seenKey()) || "[]")); } catch (e) { return new Set(); } };
+const saveSeen = notes => { try { localStorage.setItem(seenKey(), JSON.stringify(notes.map(n => n.h))); } catch (e) { /* storage blocked */ } };
+function updateBell() {
+    const seen = readSeen(), n = buildNotes().filter(x => !seen.has(x.h)).length;
+    $("bellDot").textContent = n; $("bellDot").style.display = n ? "" : "none";
+    document.title = (n ? `(${n}) ` : "") + "DejaView - Admin Portal";
+}
+const noteIcon = h => /capacity/i.test(h) ? '<i class="ico ico-alert"></i>' : /waiting/i.test(h) ? '<i class="ico ico-user"></i>' : /no teacher|no section/i.test(h) ? '<i class="ico ico-users"></i>' : '<i class="ico ico-bell"></i>';
+$("bell").addEventListener("click", () => {
+    const notes = buildNotes(), seen = readSeen();
+    const fresh = notes.filter(n => !seen.has(n.h)).length;
+    const row = n => { const nw = !seen.has(n.h);
+        return `<div class="note ${n.t} ${nw ? "unread" : "read"}"><span class="ic">${noteIcon(n.h)}</span>
+          <div class="nt"><b>${esc(n.h)}</b><span>${esc(n.p)}</span></div>
+          <span class="nstate">${nw ? "NEW" : '<i class="ico ico-check"></i> Read'}</span></div>`; };
+    $("noteSub").textContent = notes.length ? (fresh ? `${fresh} new, ${notes.length - fresh} already read.` : "You have read everything. Nothing new.") : "";
+    $("noteBody").innerHTML = notes.length
+        ? [...notes.filter(n => !seen.has(n.h)), ...notes.filter(n => seen.has(n.h))].map(row).join("")
+        : '<div class="note ok read"><span class="ic"><i class="ico ico-checkc"></i></span><div class="nt"><b>All clear</b><span>Nothing needs your attention right now.</span></div></div>';
+    $("noteDialog").showModal();
+    saveSeen(notes); updateBell();
+});
+$("noteClose").addEventListener("click", () => $("noteDialog").close());
+
+// ---------- the admin can also be a teacher ----------
+const myTeacher = () => teachers.find(t => t.id === myUid);
+function paintTeacherBtn() {
+    const t = myTeacher();
+    $("teacherBtn").innerHTML = !t ? '<i class="ico ico-teacher"></i> Also be a teacher' : t.archived ? '<i class="ico ico-teacher"></i> Restore my teacher access' : '<i class="ico ico-teacher"></i> Open my teacher dashboard';
+}
+$("teacherBtn").addEventListener("click", async () => {
+    const t = myTeacher();
+    if (t && !t.archived) return location.assign("index.html");
+    try {
+        if (t) {   // my teacher record was archived earlier
+            if (!(await ask("Restore your teacher access? You can then open the teacher dashboard again.", { title: "Restore teacher access", ok: "Restore" }))) return;
+            await updateDoc(doc(db, "teachers", t.id), { archived: false });
+            toast("Your teacher access is back."); return loadAll();
+        }
+        const v = await askFields({
+            title: "Also be a teacher",
+            message: "This lets you open the teacher dashboard with this same account, to approve, activate and evaluate students of the sections you choose.",
+            fields: [
+                { key: "name", label: "Your full name", value: head.headName, min: 2, max: 80 },
+                { key: "emp", label: "Your Employee ID (10 digits)", min: 10, max: 10, help: "Numbers only." }
+            ],
+            validate: x => !/^[0-9]{10}$/.test(x.emp) ? "The Employee ID must be exactly 10 digits." : teachers.some(o => o.employeeId === x.emp) ? "That Employee ID is already used by another teacher." : ""
+        });
+        if (!v) return;
+        const chosen = await pickMany({ title: "Your sections", message: "Tick every section you will handle as a teacher.", options: secNames().map(n => ({ value: n, label: n })), selected: [] });
+        if (chosen === null) return;
+        if (!chosen.length) return toast("Tick at least one section.", "warn");
+        await setDoc(doc(db, "teachers", myUid), { name: v.name.trim(), employeeId: v.emp, email: auth.currentUser.email || "", sections: uniq(chosen) });
+        toast("Done. You are now also a teacher. Open the menu again and choose \"Open my teacher dashboard\".");
+        await loadAll();
+    } catch (err) { console.error(err); toast("Could not do that. " + niceError(err), "err"); }
+});
 
 // ---------- department head name and title (shown in the header) ----------
 $("editHead").addEventListener("click", async () => {
@@ -101,6 +204,7 @@ $("editHead").addEventListener("click", async () => {
     catch (err) { console.error(err); toast("Could not save. " + niceError(err), "err"); }
 });
 $("pwBtn").addEventListener("click", changeMyPassword);
+$("guideBtn").addEventListener("click", () => window.open("guide-admin.html", "_blank", "noopener"));
 
 // ---------- add sections ----------
 $("addSection").addEventListener("click", e => busy(e.currentTarget, async () => {
@@ -154,17 +258,18 @@ $("tEmpId").addEventListener("input", () => {
 // ---------- create teacher ----------
 $("teacherForm").addEventListener("submit", async e => {
     e.preventDefault();
-    const name = $("tName").value.trim(), emp = $("tEmpId").value.trim(), pass = $("tPass").value;
+    const name = $("tName").value.trim(), emp = $("tEmpId").value.trim(), pass = $("tPass").value, mail = $("tEmail").value.trim().toLowerCase();
     const secs = [...$("tSections").querySelectorAll("input:checked")].map(i => i.value);
     if (name.length < 2) return toast("Enter the teacher's full name.", "warn");
     if (!/^[0-9]{10}$/.test(emp)) return toast("Employee ID must be exactly 10 digits. Numbers only, no letters or symbols.", "err");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(mail)) return toast("Type the teacher's own email address. It is used when they forget their password.", "err");
     if (!strongEnough(pass)) return toast("Password needs at least 8 characters, with at least one letter and one number.", "err");
     if (!secs.length) return toast("Tick at least one section for this teacher.", "warn");
     const dup = teachers.find(t => (t.employeeId || "") === emp);
     if (dup) return toast(dup.archived ? `That Employee ID belongs to ${dup.name}, who is archived. Press Restore in the table instead.` : "That Employee ID is already used by another teacher.", "err");
 
     await busy($("createTeacher"), async () => {
-        const login = emp + STAFF_DOMAIN;
+        const login = mail;   // the teacher's real email is the login. The Employee ID still works: it is looked up in loginIds.
         try {
             let cred;
             try { cred = await createUserWithEmailAndPassword(auth2, login, pass); }
@@ -176,9 +281,10 @@ $("teacherForm").addEventListener("submit", async e => {
                 } else throw err;
             }
             await setDoc(doc(db, "teachers", cred.user.uid), { name, employeeId: emp, email: login, sections: uniq(secs) });
+            await setDoc(doc(db, "loginIds", emp), { email: login });
             await signOut(auth2);
             $("teacherForm").reset(); empHelp();
-            toast(`Teacher account created for ${name}. They log in with Employee ID ${emp}.`);
+            toast(`Teacher account created for ${name}. They log in with Employee ID ${emp} (or their email).`);
             await loadAll();
         } catch (err) { console.error(err); toast("Could not create the teacher. " + niceError(err), "err"); }
     });
@@ -241,9 +347,9 @@ $("logoutButton").addEventListener("click", async () => {
 });
 
 // ---------- one page per menu item ----------
-const TABS = ["sections", "teachers", "students", "waypoints"];
+const TABS = ["home", "sections", "teachers", "students", "modules", "bank", "criteria"];
 function showTab() {
-    const id = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "sections";
+    const id = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "home";
     TABS.forEach(t => { const s = $(t); if (s) s.classList.toggle("on", t === id); });
     document.querySelectorAll("nav a").forEach(a => a.classList.toggle("current", a.getAttribute("href") === "#" + id));
     window.scrollTo(0, 0);
@@ -301,7 +407,7 @@ function critRow(k, l, m, d) {
     return `<div class="crit-row" data-k="${esc(k)}">
         <input class="crit-name" maxlength="60" value="${esc(l)}" placeholder="Criterion name" aria-label="Criterion name">
         <input class="crit-max" type="number" min="1" max="100" step="1" value="${m}" aria-label="Maximum points"><span>pts</span>
-        <button type="button" class="crit-del" title="Remove this criterion" aria-label="Remove this criterion">&#10005;</button>
+        <button type="button" class="crit-del" title="Remove this criterion" aria-label="Remove this criterion"><i class="ico ico-x"></i></button>
         <input class="crit-desc" maxlength="140" value="${esc(d || "")}" placeholder="Explanation: what is the student judged on?" aria-label="Explanation"></div>`;
 }
 function critFill(rows) { $("critRows").innerHTML = rows.map(([k, l, m, d]) => critRow(k, l, m, d)).join(""); critUpdate(); }

@@ -5,27 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DejaView - Instructor Dashboard</title>
     <style>body { visibility: hidden; }</style>
-    <link rel="stylesheet" href="dejaview.css?v=20261015a">
+    <link rel="stylesheet" href="dejaview.css?v=20261018f">
 </head>
 <body class="paged">
     <header>
         <img src="images/htm-logo.png" onerror="this.onerror=null;this.src='images/bulsu-seal.png'" alt="Department logo">
         <h1>DejaView</h1>
         <div class="hdr-right">
-            <button id="bell" class="bell" title="Notifications">&#128276;<span class="dot" id="bellDot" style="display:none">0</span></button>
+            <button id="bell" class="bell" title="Notifications"><i class="ico ico-bell"></i><span class="dot" id="bellDot" style="display:none">0</span></button>
             <div class="prof">
                 <button id="avatarBtn" class="prof-btn" type="button" aria-haspopup="true" aria-expanded="false" title="Your profile">
                     <span class="avatar" id="avatarTxt">I</span>
                     <span class="prof-name" id="whoShort">Instructor</span>
-                    <span class="caret">▾</span>
+                    <span class="caret"><i class="ico ico-down"></i></span>
                 </button>
                 <div id="profMenu" class="prof-menu" hidden>
                     <div class="prof-top">
                         <span class="avatar big" id="avatarTxt2">I</span>
                         <div><b id="whoName">Loading...</b><span id="who"></span></div>
                     </div>
-                    <button id="pwBtn" type="button">🔑 Change password</button>
-                    <button id="logoutButton" type="button" class="out">⎋ Logout</button>
+                    <button id="adminBtn" type="button" style="display:none"><i class="ico ico-dash"></i> Open admin dashboard</button>
+                    <button id="pwBtn" type="button"><i class="ico ico-key"></i> Change password</button>
+                    <button id="guideBtn" type="button"><i class="ico ico-book"></i> User Guide</button>
+                    <button id="logoutButton" type="button" class="out"><i class="ico ico-logout"></i> Logout</button>
                 </div>
             </div>
         </div>
@@ -57,10 +59,11 @@
             <h2>Live Monitor</h2>
             <p class="hint">See where the student is and what they are being asked, right now. It updates by itself every few seconds. Leave this page open on the laptop or the TV.</p>
             <div class="toolbar" id="manualWatch">
-                <label class="grow">Watch the live picture: type the tablet's address (Settings &gt; Wi-Fi &gt; IP address)
+                <label class="grow">Watch the live picture: type the student's phone address (on the phone: Settings &gt; Wi-Fi &gt; IP address)
                     <input type="text" id="watchIp" placeholder="for example 192.168.1.25"></label>
                 <button class="approve-button" id="watchGo" type="button">Open live view</button>
             </div>
+            <p class="hint guide-link">Need help with the IP address or the Live Monitor? <a href="guide-teacher.html#s4" target="_blank" rel="noopener">Open the User Guide</a>.</p>
             <div class="live-grid" id="liveGrid"><p class="hint empty-note">Nobody is playing right now. When a student starts a map, they appear here.</p></div>
         </section>
 
@@ -91,7 +94,7 @@
                 <button class="edit-button" id="printClass" type="button">Print score sheet (PDF)</button>
             </div>
             <div class="toolbar sub">
-                <span class="hint">Activate for:</span> <select id="playMaps"></select> <select id="playMinutes"></select>
+                <span class="hint">Activate for:</span> <select id="playMaps"></select>
                 <span class="hint">Activate one student at a time, when it is their turn. A map locks after the student finishes it.</span>
             </div>
             <p class="hint" id="studentCount"></p>
@@ -126,29 +129,38 @@
         </section>
     </main>
 
-    <dialog id="evalDialog" class="wide">
-        <h2 id="evalTitle">Evaluate</h2>
-        <p class="hint" id="evalSub"></p>
-        <p class="hint">Enter the score for each criterion. The maximum is shown in each column title (100 per map in total). Write your remarks at the bottom. Save draft keeps it hidden; Submit &amp; release shows it to the student.</p>
-        <div class="student-table-container"><table class="eval-table"><thead id="evalHead"></thead><tbody id="evalBody"></tbody></table></div>
-        <h3 class="sub-title">Remarks</h3>
-        <div id="evalRemarks" class="rem-grid"></div>
-        <div class="row"><button type="button" class="delete-button" id="evalCancel">Cancel</button>
+    <dialog id="evalDialog" class="wide dlg-fixed">
+        <div class="dlg-top">
+            <div><h2 id="evalTitle">Evaluate</h2><p class="hint" id="evalSub"></p></div>
+            <button type="button" class="dlg-x" id="evalX" title="Close" aria-label="Close"><i class="ico ico-x"></i></button>
+        </div>
+        <div class="dlg-scroll">
+            <p class="hint">Enter the score for each criterion (100 per map in total) and write your remarks at the bottom. <b>Submit &amp; release</b> makes the scores final: the student sees them and they appear under <b>Scores</b>. A released map is locked. Press <b>Edit</b> above it to change it.</p>
+            <div class="student-table-container"><table class="eval-table"><thead id="evalHead"></thead><tbody id="evalBody"></tbody></table></div>
+            <h3 class="sub-title">Remarks</h3>
+            <div id="evalRemarks" class="rem-grid"></div>
+        </div>
+        <div class="row dlg-foot"><button type="button" class="delete-button" id="evalCancel">Cancel</button>
             <button type="button" class="edit-button" id="evalSave">Save draft</button>
             <button type="button" class="add-button" id="evalSubmit">Submit &amp; release</button></div>
     </dialog>
 
-    <dialog id="viewDialog" class="wide">
-        <h2 id="viewTitle">Student</h2>
-        <p class="hint" id="viewSub"></p>
-        <div class="student-table-container"><table class="eval-table"><thead id="viewHead"></thead><tbody id="viewBody"></tbody></table></div>
-        <h3 class="sub-title">Remarks</h3>
-        <div id="viewRemarks"></div>
-        <div class="row"><button type="button" class="edit-button" id="viewPrint">Print / Save as PDF</button><button type="button" class="add-button" id="viewClose">Close</button></div>
+    <dialog id="viewDialog" class="wide dlg-fixed">
+        <div class="dlg-top">
+            <div><h2 id="viewTitle">Student</h2><p class="hint" id="viewSub"></p></div>
+            <button type="button" class="dlg-x" id="viewX" title="Close" aria-label="Close"><i class="ico ico-x"></i></button>
+        </div>
+        <div class="dlg-scroll">
+            <div class="student-table-container"><table class="eval-table"><thead id="viewHead"></thead><tbody id="viewBody"></tbody></table></div>
+            <h3 class="sub-title">Remarks</h3>
+            <div id="viewRemarks"></div>
+        </div>
+        <div class="row dlg-foot"><button type="button" class="edit-button" id="viewEdit">Edit grades</button><button type="button" class="edit-button" id="viewPrint">Print / Save as PDF</button><button type="button" class="add-button" id="viewClose">Close</button></div>
     </dialog>
 
-    <dialog id="noteDialog">
+    <dialog id="noteDialog" class="note-dlg">
         <h2>Notifications</h2>
+        <p class="hint" id="noteSub"></p>
         <div id="noteBody"></div>
         <div class="row"><button type="button" class="add-button" id="noteClose">Close</button></div>
     </dialog>
@@ -185,7 +197,7 @@
                     <div class="img-prev" id="mImgPrev0"><span>Drop photo</span></div>
                     <div class="img-fields">
                         <input id="mImgUrl0" placeholder="Or paste a photo link">
-                        <input id="mImgCap0" maxlength="120" placeholder="Caption">
+                        <input id="mImgCap0" maxlength="400" placeholder="Caption (up to 400 characters)">
                         <div class="img-btns">
                             <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile0" hidden></label>
                             <button type="button" class="delete-button" data-clear="0">Remove</button>
@@ -196,7 +208,7 @@
                     <div class="img-prev" id="mImgPrev1"><span>Drop photo</span></div>
                     <div class="img-fields">
                         <input id="mImgUrl1" placeholder="Or paste a photo link">
-                        <input id="mImgCap1" maxlength="120" placeholder="Caption">
+                        <input id="mImgCap1" maxlength="400" placeholder="Caption (up to 400 characters)">
                         <div class="img-btns">
                             <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile1" hidden></label>
                             <button type="button" class="delete-button" data-clear="1">Remove</button>
@@ -207,7 +219,7 @@
                     <div class="img-prev" id="mImgPrev2"><span>Drop photo</span></div>
                     <div class="img-fields">
                         <input id="mImgUrl2" placeholder="Or paste a photo link">
-                        <input id="mImgCap2" maxlength="120" placeholder="Caption">
+                        <input id="mImgCap2" maxlength="400" placeholder="Caption (up to 400 characters)">
                         <div class="img-btns">
                             <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile2" hidden></label>
                             <button type="button" class="delete-button" data-clear="2">Remove</button>
@@ -218,7 +230,7 @@
                     <div class="img-prev" id="mImgPrev3"><span>Drop photo</span></div>
                     <div class="img-fields">
                         <input id="mImgUrl3" placeholder="Or paste a photo link">
-                        <input id="mImgCap3" maxlength="120" placeholder="Caption">
+                        <input id="mImgCap3" maxlength="400" placeholder="Caption (up to 400 characters)">
                         <div class="img-btns">
                             <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile3" hidden></label>
                             <button type="button" class="delete-button" data-clear="3">Remove</button>
@@ -237,6 +249,8 @@
     <dialog id="qDialog">
         <form id="qForm">
             <h2 id="qTitle">Add question</h2>
+            <div id="qStopRow"><label for="qStop">Which stop is this question for?</label>
+            <select id="qStop"></select></div>
             <label for="qSpeaker">Speaker (NPC name)</label>
             <input id="qSpeaker" maxlength="60" required>
             <label for="qText">Question (what the student must answer out loud, 30 seconds)</label>
@@ -248,7 +262,7 @@
     </dialog>
 
     <script>
-    // Each menu item opens its own page. Only one section is shown at a time.
+    
     (function () {
         var ids = ["home", "live", "pending", "students", "modules", "bank"];
         function show() {
@@ -267,8 +281,8 @@
         show();
     })();
     </script>
-    <script type="module" src="teacher.js?v=20261011q"></script>
-    <script type="module" src="bank.js?v=20261011q"></script>
-    <script type="module" src="modules.js?v=20261011q"></script>
+    <script type="module" src="teacher.js?v=20261018f"></script>
+    <script type="module" src="bank.js?v=20261018f"></script>
+    <script type="module" src="modules.js?v=20261018f"></script>
 </body>
 </html>

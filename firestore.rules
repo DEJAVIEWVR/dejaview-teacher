@@ -180,24 +180,65 @@ service cloud.firestore {
       allow write: if false;           // create admins by hand in the Console
     }
 
+    // ---------- "Student ID / Employee ID -> login email" (needed BEFORE login, so one document can be read by anyone) ----------
+    // Only the owner of that email can create it. Nobody can list the whole collection.
+    match /loginIds/{id} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if signedIn() && id.matches("^[0-9]{10}$")
+                    && request.resource.data.keys().hasOnly(["email"])
+                    && request.resource.data.email is string
+                    && request.resource.data.email == request.auth.token.email
+                    && (resource == null || resource.data.email == request.auth.token.email)
+                    || isAdmin() && id.matches("^[0-9]{10}$") && request.resource.data.keys().hasOnly(["email"]);
+      allow delete: if isAdmin();
+    }
+
     // ---------- questions ----------
+    // Original questions: only the admin can change them.
+    // Added questions (isExtra): an instructor can add, edit and delete ONLY their own, and only for the sections they handle.
+    // The admin can add for all sections or chosen sections, and can manage every added question.
     // To stop outsiders from reading the questions, change "read: if true" to "read: if signedIn()"
     // (only after you confirm the VR app loads questions AFTER the student logs in).
+    function myTeacherSections() { return get(/databases/$(db)/documents/teachers/$(request.auth.uid)).data.sections; }
+    function goodQuestion(d) {
+      return d.questionText is string && d.questionText.size() >= 3 && d.questionText.size() <= 400
+          && (!("keyPoints" in d) || (d.keyPoints is string && d.keyPoints.size() <= 800))
+          && (!("speakerNPC" in d) || (d.speakerNPC is string && d.speakerNPC.size() <= 60));
+    }
+    function mySectionsOnly(d) {
+      return d.sections is list && d.sections.size() >= 1 && d.sections.size() <= 30
+          && d.sections.hasOnly(myTeacherSections());
+    }
     match /Scenarios_tbl/{id} {
       allow read: if true;
       allow create: if isAdmin()
                     || (isTeacher() && request.resource.data.isExtra == true
-                        && request.resource.data.questionText is string
-                        && request.resource.data.questionText.size() >= 3 && request.resource.data.questionText.size() <= 400
-                        && request.resource.data.destinationID is string);
-      // Teachers may only edit the text fields, never the structure
+                        && request.resource.data.createdBy == request.auth.uid
+                        && request.resource.data.destinationID is string
+                        && goodQuestion(request.resource.data)
+                        && mySectionsOnly(request.resource.data));
       allow update: if isAdmin()
-                    || (isTeacher()
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["speakerNPC","questionText","keyPoints","options"])
-                        && request.resource.data.questionText is string
-                        && request.resource.data.questionText.size() >= 3 && request.resource.data.questionText.size() <= 400
-                        && (!("keyPoints" in request.resource.data) || request.resource.data.keyPoints.size() <= 800));
-      allow delete: if isAdmin() || (isTeacher() && resource.data.isExtra == true);
+                    || (isTeacher() && resource.data.isExtra == true && resource.data.createdBy == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["speakerNPC","questionText","keyPoints","sections"])
+                        && goodQuestion(request.resource.data)
+                        && mySectionsOnly(request.resource.data));
+      allow delete: if isAdmin() || (isTeacher() && resource.data.isExtra == true && resource.data.createdBy == request.auth.uid);
+    }
+
+    // ---------- the questions each student was asked (saved by the game, shown in Scores) ----------
+    // id = "<studentUid>_L<level>". q = { "1": {stop, speaker, text}, "2": ... } (one entry per question of the map)
+    match /asked/{id} {
+      allow create, update: if activeStudent()
+                    && request.resource.data.keys().hasOnly(["uid","studentIdNumber","fullname","section","level","destination","q","updatedAt"])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.section == mySection()
+                    && request.resource.data.level is int
+                    && request.resource.data.level >= 1 && request.resource.data.level <= 3
+                    && id == request.auth.uid + "_L" + string(request.resource.data.level)
+                    && request.resource.data.q is map && request.resource.data.q.size() <= 12;
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || teachesSection(resource.data.section) || isAdmin());
+      allow delete: if teachesSection(resource.data.section) || isAdmin();
     }
 
     // Reserve waypoint limit per destination
@@ -209,16 +250,26 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Training modules
+    // Training modules: an instructor changes ONLY their own, and only for the sections they handle.
+    // (Older modules without "sections" reach every section.) The admin can manage all of them.
+    function goodModule(d) {
+      return d.title is string && d.title.size() >= 1 && d.title.size() <= 120
+          && d.content is string && d.content.size() <= 5000
+          && d.link is string
+          && (d.link == "" || d.link.matches("https?://.*"));
+    }
     match /modules/{id} {
       allow read: if true;
-      allow create, update: if (isAdmin() || isTeacher())
-                    && request.resource.data.title is string
-                    && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 120
-                    && request.resource.data.content is string && request.resource.data.content.size() <= 5000
-                    && request.resource.data.link is string
-                    && (request.resource.data.link == "" || request.resource.data.link.matches("https?://.*"));
-      allow delete: if isAdmin() || isTeacher();
+      allow create: if (isAdmin() && goodModule(request.resource.data))
+                    || (isTeacher() && goodModule(request.resource.data)
+                        && request.resource.data.createdBy == request.auth.uid
+                        && mySectionsOnly(request.resource.data));
+      allow update: if (isAdmin() && goodModule(request.resource.data))
+                    || (isTeacher() && goodModule(request.resource.data)
+                        && resource.data.get("createdBy", "") == request.auth.uid
+                        && request.resource.data.createdBy == request.auth.uid
+                        && mySectionsOnly(request.resource.data));
+      allow delete: if isAdmin() || (isTeacher() && resource.data.get("createdBy", "") == request.auth.uid);
     }
   }
 }

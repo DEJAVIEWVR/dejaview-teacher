@@ -76,7 +76,10 @@
         }
     #toasts{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;max-width:min(380px,92vw)}
         .toast{background:#1f7a3a;color:#fff;border-radius:10px;padding:12px 16px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.25);transition:opacity .3s,transform .3s;cursor:pointer}
-        .toast.err{background:#b3261e}.toast.warn{background:#b26a00}.toast.info{background:#2a5bd7}.toast.hide{opacity:0;transform:translateX(20px)}
+        /* the message box is a "popover": without this it shows as a plain boxed popup in the middle of the page */
+        #toasts[popover]{position:fixed;inset:16px 16px auto auto;margin:0;padding:0;border:0;background:transparent;overflow:visible;width:auto;height:auto;max-width:min(380px,92vw)}
+        .toast{font-size:.92rem;line-height:1.4;border-left:5px solid rgba(255,255,255,.55)}
+                .toast.err{background:#b3261e}.toast.warn{background:#b26a00}.toast.info{background:#2a5bd7}.toast.hide{opacity:0;transform:translateX(20px)}
     </style>
 </head>
 <body>
@@ -101,16 +104,17 @@
                 </div>
             </div>
             <button type="submit" class="login-btn" id="loginBtn">Login</button>
+            <p style="text-align:center;margin:12px 0 0"><a href="#" id="forgotLink" style="color:var(--maroon);font-weight:600;font-size:.88rem">Forgot password?</a></p>
             <p id="loginMessage"></p>
         </form>
 
-        <p class="foot">Bulacan State University &middot; Sarmiento Campus<br>Department of Tourism Management</p>
+        <p class="foot">Your email is used only to send password reset links.<br>Bulacan State University &middot; Sarmiento Campus<br>Department of Tourism Management</p>
     </main>
 
     <script type="module">
         import { auth, db, $ } from "./firebase.js";
         import { toast } from "./toast.js";
-        import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+        import { signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
         import { getDoc, doc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
         // Send each person to their own page: admin or teacher
@@ -133,6 +137,35 @@
             $("togglePw").textContent = show ? "Hide" : "Show";
         });
 
+        // Employee ID -> the email saved for that account (older accounts have none and use the school address)
+        async function loginEmailOf(empId) {
+            try { const s = await getDoc(doc(db, "loginIds", empId)); if (s.exists() && (s.data().email || "").includes("@")) return s.data().email; } catch (e) { console.warn(e); }
+            return empId + "@staff.dejaview.app";
+        }
+
+        $("forgotLink").addEventListener("click", async e => {
+            e.preventDefault();
+            let id = $("email").value.trim().replace(/\s+/g, "");
+            if (!id) return toast("Type your email or Employee ID above first, then press Forgot password.", "warn");
+            let target = id;
+            if (!id.includes("@")) {
+                if (!/^[0-9]{10}$/.test(id)) return toast("An Employee ID is exactly 10 digits. Or type your email.", "warn");
+                let found = false;
+                try { const s = await getDoc(doc(db, "loginIds", id)); found = s.exists() && (s.data().email || "").includes("@"); if (found) target = s.data().email; } catch (err) { console.warn(err); }
+                if (!found) return toast("This account has no email saved yet, so the link cannot be sent. Ask the administrator to reset your password.", "warn");
+            }
+            try {
+                await sendPasswordResetEmail(auth, target);
+                const hide = target.replace(/^(.).*(@.*)$/, "$1***$2");
+                $("loginMessage").textContent = "If this account exists, a reset link was sent to " + hide + ". Check your inbox and spam folder.";
+                toast("Reset link sent to " + hide + ". Check your inbox and spam folder.", "info");
+            } catch (err) {
+                console.error(err);
+                const c = err.code || "";
+                toast(c.includes("network") ? "No internet connection. Please try again." : c.includes("too-many") ? "Too many attempts. Please wait a few minutes." : "If this account exists, a reset link was sent. Check your inbox and spam folder.", c.includes("network") || c.includes("too-many") ? "err" : "info");
+            }
+        });
+
         $("loginForm").addEventListener("submit", async e => {
             e.preventDefault();
             let id = $("email").value.trim();
@@ -140,7 +173,7 @@
             if (!id.includes("@")) {                                          // an Employee ID
                 id = id.replace(/\s+/g, "");
                 if (!/^[0-9]{10}$/.test(id)) { toast("An Employee ID is exactly 10 digits. Or type your email.", "warn"); return; }
-                id = id + "@staff.dejaview.app";
+                id = await loginEmailOf(id);
             }
             $("loginMessage").textContent = "Logging in...";
             $("loginBtn").disabled = true;

@@ -5,36 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DejaView - Admin Portal</title>
     <style>body { visibility: hidden; }</style>
-    <link rel="stylesheet" href="dejaview.css?v=20261016c">
+    <link rel="stylesheet" href="dejaview.css?v=20261018f">
 </head>
 <body class="paged">
     <header>
         <img src="images/htm-logo.png" onerror="this.onerror=null;this.src='images/bulsu-seal.png'" alt="Department logo">
         <h1>DejaView Admin</h1>
-        <div class="prof">
-            <button id="avatarBtn" class="prof-btn" type="button" aria-haspopup="true" aria-expanded="false" title="Your profile">
-                <span class="avatar" id="avatarTxt">A</span>
-                <span class="prof-name" id="headNameShort"></span>
-                <span class="caret">▾</span>
-            </button>
-            <div id="profMenu" class="prof-menu" hidden>
-                <div class="prof-top">
-                    <span class="avatar big" id="avatarTxt2">A</span>
-                    <div><b id="headName">Loading...</b><span id="headTitle"></span></div>
+        <div class="hdr-right">
+            <button id="bell" class="bell" title="Notifications"><i class="ico ico-bell"></i><span class="dot" id="bellDot" style="display:none">0</span></button>
+    <div class="prof">
+                <button id="avatarBtn" class="prof-btn" type="button" aria-haspopup="true" aria-expanded="false" title="Your profile">
+                    <span class="avatar" id="avatarTxt">A</span>
+                    <span class="prof-name" id="headNameShort"></span>
+                    <span class="caret"><i class="ico ico-down"></i></span>
+                </button>
+                <div id="profMenu" class="prof-menu" hidden>
+                    <div class="prof-top">
+                        <span class="avatar big" id="avatarTxt2">A</span>
+                        <div><b id="headName">Loading...</b><span id="headTitle"></span></div>
+                    </div>
+                    <button id="teacherBtn" type="button"><i class="ico ico-teacher"></i> Also be a teacher</button>
+                    <button id="editHead" type="button"><i class="ico ico-edit"></i> Edit name &amp; title</button>
+                    <button id="guideBtn" type="button"><i class="ico ico-book"></i> User Guide</button>
+                    <button id="pwBtn" type="button"><i class="ico ico-key"></i> Change password</button>
+                    <button id="logoutButton" type="button" class="out"><i class="ico ico-logout"></i> Logout</button>
                 </div>
-                <button id="editHead" type="button">✏️ Edit name &amp; title</button>
-                <button id="pwBtn" type="button">🔑 Change password</button>
-                <button id="logoutButton" type="button" class="out">⎋ Logout</button>
             </div>
         </div>
     </header>
     <nav>
+        <a href="#home">Home</a>
         <a href="#sections">Sections</a>
         <a href="#teachers">Teacher Accounts</a>
         <a href="#students">Student List</a>
-        <a href="#waypoints">Grading &amp; Questions</a>
+        <a href="#modules">Training Modules</a>
+        <a href="#bank">Question Bank</a>
+        <a href="#criteria">Grading Criteria</a>
     </nav>
     <main>
+        <section id="home">
+            <h2>Welcome, Admin</h2>
+            <p class="hint">Here is what needs your attention today.</p>
+            <div class="stat-grid" id="statGrid"></div>
+            <h3 class="sub-title">Sections</h3>
+            <div class="cap-grid" id="capGrid"></div>
+            <h3 class="sub-title">How it works</h3>
+            <div class="step-grid">
+                <div class="step"><span>1</span><p>Add the <b>Sections</b> and create the <b>Teacher Accounts</b>.</p></div>
+                <div class="step"><span>2</span><p>Teachers approve their students and grade them in their own dashboard.</p></div>
+                <div class="step"><span>3</span><p>Set the <b>Grading Criteria</b> and review the <b>Question Bank</b> before the activity.</p></div>
+            </div>
+        </section>
+
         <section id="sections">
             <h2>Sections</h2>
             <p class="hint">These sections appear as the dropdown in the VR register screen and are assigned to teachers. Add several at once: separate them with commas or put one per line. Names that already exist (even written differently, like "bstm-1b" and "BSTM 1B") are skipped.</p>
@@ -57,6 +79,7 @@
                     <input id="tName" placeholder="Full name" minlength="2" maxlength="80" required>
                     <div><input id="tEmpId" placeholder="Employee ID (10 digits)" inputmode="numeric" maxlength="10" autocomplete="off" required style="width:100%">
                     <small id="empHelp" class="hint"></small></div>
+                    <div><input id="tEmail" type="email" placeholder="Teacher's own email (for forgot password)" maxlength="80" autocomplete="off" required style="width:100%"></div>
                     <input id="tPass" type="password" placeholder="Temporary password (8+ characters, 1 letter and 1 number)" minlength="8" autocomplete="new-password" required>
                 </div>
                 <label class="hint" style="display:block;margin-top:6px">Sections handled by this teacher</label>
@@ -64,15 +87,15 @@
                 <button type="submit" class="add-button" id="createTeacher" style="margin-top:12px">Create Teacher</button>
                 <p id="msg"></p>
             </form>
+            <div class="toolbar">
+                <label>List<select id="teacherView"><option value="active">Current teachers</option><option value="archived">Archived teachers</option></select></label>
+                <span class="chip" id="teacherCount"></span>
+            </div>
             <div class="student-table-container"><table>
                 <thead><tr><th>Name</th><th>Employee ID (login)</th><th>Sections</th><th>Actions</th></tr></thead>
                 <tbody id="teacherBody"><tr><td colspan="4">Loading...</td></tr></tbody>
             </table></div>
-            <details id="archBox" class="arch-box" hidden>
-                <summary>Archived teachers <span class="arch-n" id="archN"></span></summary>
-                <p class="hint">Archived teachers cannot log in. Press Restore to bring one back.</p>
-                <div id="archBody"></div>
-            </details>
+
 
         </section>
 
@@ -90,7 +113,7 @@
             </table></div>
         </section>
 
-        <section id="waypoints">
+        <section id="criteria">
             <h2>Grading Criteria</h2>
             <p class="hint">Rename the criteria, add new ones, remove the ones you do not need, and set the maximum points and a short explanation for each. The maximums must add up to exactly 100. Students see the criteria and the explanations in the game before each map and on their page. This also applies to every section, the instructors' Evaluate window and the printouts.</p>
             <div class="crit-card">
@@ -105,19 +128,132 @@
                 <p class="hint">Tip: set this before instructors start grading. Scores that were already released keep their numbers, but they will be shown against the new maximums.</p>
             </div>
 
-            <h2 style="margin-top:28px">Extra Questions per Destination</h2>
-            <div class="alert"><b>What is a waypoint?</b> A waypoint is one <b>stop</b> along the virtual tour where a tourist character stops the student and asks a question.
-            Each destination (Grotto, Mt. Balagbag, Padre Pio) already has its ready-made stops. An <b>extra stop</b> is a spare stop that instructors can fill with their own question in the Question Bank.
-            Use the table to choose how many extra stops each destination may have (0 to 3).</div>
-            <div class="student-table-container"><table>
-                <thead><tr><th>Destination</th><th>Extra stops allowed</th></tr></thead>
-                <tbody id="wpBody"></tbody>
-            </table></div>
-            <p id="wpMsg"></p>
         </section>
         
+        <section id="modules">
+            <div class="sec-head">
+                <div>
+                    <h2>Training Modules</h2>
+                    <p class="hint">Lessons your students read on their student page before the VR activity. Add lesson notes and an optional link to a file or video (YouTube, Google Drive, PDF). Students can only read them; they cannot edit.</p>
+                </div>
+                <button class="add-button" id="addMod">+ Add Module</button>
+            </div>
+            <div id="modTabs" class="tabs"></div>
+            <div id="modList">Loading...</div>
+        </section>
+
+        <section id="bank">
+            <h2>Question Bank</h2>
+            <div class="student-controls">
+                <select id="bankDest"></select>
+                <button class="add-button" id="addQ">+ Add Question</button>
+                <button class="edit-button" id="printQ">Print question sheet</button>
+            </div>
+            <p class="hint" id="bankQuota"></p>
+            <div id="bankList">Loading...</div>
+            <div id="scenarioList" hidden></div>
+        </section>
     </main>
-    <script type="module" src="admin.js?v=20261011n"></script>
-    <script type="module" src="waypoints.js?v=20261011n"></script>
+
+    <dialog id="mDialog">
+        <form id="mForm">
+            <h2 id="mTitleHead">Add module</h2>
+            <div class="seg" id="mKindSeg">
+                <button type="button" data-kind="lesson" class="on">Lesson</button>
+                <button type="button" data-kind="stop">Game history</button>
+            </div>
+            <input type="hidden" id="mKind" value="lesson">
+            <div id="mTitleRow">
+                <label for="mTitle">Title</label>
+                <input id="mTitle" maxlength="120">
+            </div>
+            <div id="mStopRow" hidden>
+                <label for="mStopSel">Stop</label>
+                <select id="mStopSel" class="pick"></select>
+                <input id="mStop" maxlength="80" placeholder="Type the stop name" autocomplete="off" hidden>
+            </div>
+            <label for="mContent" id="mContentLabel">Lesson notes</label>
+            <textarea id="mContent" rows="6" maxlength="5000" required></textarea>
+            <p class="hint" id="mContentHint" hidden>New paragraph = new screen in the game.</p>
+            <div id="mImgBox" hidden>
+                <label>Photos (up to 4)</label>
+                <div class="img-slot" id="mSlot0">
+                    <div class="img-prev" id="mImgPrev0"><span>Drop photo</span></div>
+                    <div class="img-fields">
+                        <input id="mImgUrl0" placeholder="Or paste a photo link">
+                        <input id="mImgCap0" maxlength="400" placeholder="Caption (up to 400 characters)">
+                        <div class="img-btns">
+                            <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile0" hidden></label>
+                            <button type="button" class="delete-button" data-clear="0">Remove</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="img-slot" id="mSlot1">
+                    <div class="img-prev" id="mImgPrev1"><span>Drop photo</span></div>
+                    <div class="img-fields">
+                        <input id="mImgUrl1" placeholder="Or paste a photo link">
+                        <input id="mImgCap1" maxlength="400" placeholder="Caption (up to 400 characters)">
+                        <div class="img-btns">
+                            <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile1" hidden></label>
+                            <button type="button" class="delete-button" data-clear="1">Remove</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="img-slot" id="mSlot2">
+                    <div class="img-prev" id="mImgPrev2"><span>Drop photo</span></div>
+                    <div class="img-fields">
+                        <input id="mImgUrl2" placeholder="Or paste a photo link">
+                        <input id="mImgCap2" maxlength="400" placeholder="Caption (up to 400 characters)">
+                        <div class="img-btns">
+                            <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile2" hidden></label>
+                            <button type="button" class="delete-button" data-clear="2">Remove</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="img-slot" id="mSlot3">
+                    <div class="img-prev" id="mImgPrev3"><span>Drop photo</span></div>
+                    <div class="img-fields">
+                        <input id="mImgUrl3" placeholder="Or paste a photo link">
+                        <input id="mImgCap3" maxlength="400" placeholder="Caption (up to 400 characters)">
+                        <div class="img-btns">
+                            <label class="edit-button file-btn">Add photo<input type="file" accept="image/*" id="mImgFile3" hidden></label>
+                            <button type="button" class="delete-button" data-clear="3">Remove</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="mLinkRow">
+                <label for="mLink">Link (optional)</label>
+                <input id="mLink" type="url" placeholder="https://">
+            </div>
+            <div class="row"><button type="button" class="delete-button" id="mCancel">Cancel</button><button type="submit" class="add-button" id="mSave">Save</button></div>
+        </form>
+    </dialog>
+
+    <dialog id="qDialog">
+        <form id="qForm">
+            <h2 id="qTitle">Add question</h2>
+            <div id="qStopRow"><label for="qStop">Which stop is this question for?</label>
+            <select id="qStop"></select></div>
+            <label for="qSpeaker">Speaker (NPC name)</label>
+            <input id="qSpeaker" maxlength="60" required>
+            <label for="qText">Question (what the student must answer out loud, 30 seconds)</label>
+            <textarea id="qText" rows="3" minlength="3" maxlength="400" required></textarea>
+            <label for="qKey">Key points of a good answer (only the instructor sees this)</label>
+            <textarea id="qKey" rows="4" maxlength="800" placeholder="e.g. Built in 1940s, dedicated to Our Lady of Lourdes, pilgrimage site..."></textarea>
+                        <div class="row"><button type="button" class="delete-button" id="qCancel">Cancel</button><button type="submit" class="add-button" id="qSave">Save</button></div>
+        </form>
+    </dialog>
+
+    <dialog id="noteDialog" class="note-dlg">
+        <h2>Notifications</h2>
+        <p class="hint" id="noteSub"></p>
+        <div id="noteBody"></div>
+        <div class="row"><button type="button" class="add-button" id="noteClose">Close</button></div>
+    </dialog>
+
+    <script type="module" src="admin.js?v=20261018f"></script>
+    <script type="module" src="modules.js?v=20261018f"></script>
+    <script type="module" src="bank.js?v=20261018f"></script>
 </body>
 </html>

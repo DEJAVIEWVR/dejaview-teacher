@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DejaView - Instructor Guide</title>
+    <link rel="stylesheet" href="dejaview.css?v=20261017a">
+    <style>
+        .guide{max-width:820px;margin:0 auto;padding:24px 18px 60px}
+        .guide h2{margin:28px 0 8px;color:var(--m);font-family:Georgia,serif}
+        .guide ol,.guide ul{margin:6px 0 12px 22px;padding:0;line-height:1.65}
+        .guide li{margin:4px 0}
+        .guide .tip{background:#fff8e6;border-left:4px solid var(--g);border-radius:8px;padding:10px 14px;margin:10px 0;line-height:1.55}
+        .guide .toc{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px}
+        .guide .toc a{background:#f4f1ee;border-radius:999px;padding:6px 14px;text-decoration:none;color:var(--ink);font-weight:600;font-size:.88rem}
+        .guide .toc a:hover{background:var(--m);color:#fff}
+        .guide kbd{background:#eee;border:1px solid #ccc;border-radius:5px;padding:1px 7px;font-size:.85em}
+        .guide-others{margin-top:30px;font-size:.9rem}
+    </style>
+</head>
+<body style="visibility:visible">
+    <header>
+        <img src="images/htm-logo.png" onerror="this.onerror=null;this.src='images/bulsu-seal.png'" alt="Department logo">
+        <h1>DejaView User Guide</h1>
+        <button class="logout-button" onclick="window.close();if(!window.closed)history.length>1?history.back():location.href='login.html'">Close</button>
+    </header>
+    <main class="guide">
+        <h1 style="margin:0;color:var(--m);font-family:Georgia,serif">Instructor Guide</h1>
+        <p class="hint">How to use the instructor dashboard, step by step.</p>
+        <div class="toc"><a href="#s0">1. Log in</a><a href="#s1">2. Home and the bell</a><a href="#s2">3. Approve students</a><a href="#s3">4. Activate a student</a><a href="#s4">5. Watch a student live</a><a href="#s5">6. Evaluate</a><a href="#s6">7. Scores and printing</a><a href="#s7">8. More actions</a><a href="#s8">9. Training Modules</a><a href="#s9">10. Question Bank</a></div>
+        <h2 id="s0">1. Log in</h2>
+        <ol>
+            <li>Open the DejaView website and type your <b>10-digit Employee ID</b> (or your email) and your password.</li>
+            <li>To change your password, press your name at the top right, then <b>Change password</b>.</li>
+            <li><b>Forgot your password?</b> Type your email or Employee ID on the login page, press <b>Forgot password?</b>, and open the email we send you (check Spam too). If your account has no email saved yet, ask the administrator.</li>
+        </ol>
+        <h2 id="s1">2. Home and the bell</h2>
+        <ul>
+            <li><b>Home</b> shows how many students are active, waiting for approval, playing now and waiting for your evaluation.</li>
+            <li>The <b>bell</b> lists what needs your attention (pending students, maps to evaluate, accounts that will expire).</li>
+        </ul>
+        <h2 id="s2">3. Approve students</h2>
+        <ol>
+            <li>Open <b>Pending</b>.</li>
+            <li>Press <b>Approve</b> only for students you recognize. <b>Reject</b> deletes the registration (the student can register again).</li>
+        </ol>
+        <h2 id="s3">4. Activate a student</h2>
+        <ol>
+            <li>Open <b>Student List</b>. It starts on <b>All my sections</b>; choose one section to see only its students.</li>
+            <li>Choose the map (or all 3 maps) next to <b>Activate for</b>.</li>
+            <li>Press <b>Activate</b> on the student whose turn it is. Activate one student at a time.</li>
+            <li>The student can now log in to the VR app and play. A map locks after the student finishes it. <b>Deactivate</b> stops the access.</li>
+        </ol>
+        <h2 id="s4">5. Watch a student live</h2>
+        <ol>
+            <li>Open <b>Live</b>. Each playing student shows a card: where they are, the question, the key points of a good answer and the clocks.</li>
+            <li>To see the student's screen, type the phone's IP address under the heading (on the phone: Settings &gt; Wi-Fi &gt; the connected network &gt; IP address) and press <b>Open live view</b>.</li>
+        </ol>
+        <div class="tip">The student plays on their own phone (with the DejaView app installed). You can watch on any laptop, tablet or TV that is connected to the <b>same Wi-Fi</b> as the student's phone. If the card has a green <b>Watch live</b> button, press it instead.</div>
+        <h2 id="s5">6. Evaluate</h2>
+        <ol>
+            <li>In the <b>Student List</b>, press <b>Evaluate</b> on the student.</li>
+            <li>Type the score for each criterion under each map. The maximum is shown next to the criterion, and every criterion has a short explanation under its name.</li>
+            <li>Write your remarks (optional, up to 200 characters).</li>
+            <li><b>Save draft</b> keeps it hidden from the student. <b>Submit &amp; release</b> makes it the final score: the student sees it and it shows under <b>Scores</b>.</li>
+            <li>A released map is <b>locked</b>. Press <b>Edit</b> above that map to change it, then press <b>Submit &amp; release</b> again.</li>
+            <li>After a map is released, the <b>Evaluate</b> button in the Student List becomes <b>Scores</b>. Open it to see the grades and remarks, print the report, or press <b>Edit grades</b> to change something.</li>
+        </ol>
+        <h2 id="s6">7. Scores and printing</h2>
+        <ul>
+            <li><b>Scores</b> shows all maps of the student, the remarks and the <b>average of all maps</b>. Press <b>Print / Save as PDF</b> for the report.</li>
+            <li><b>Print score sheet (PDF)</b> in the Student List prints the whole section.</li>
+            <li>In the print window, choose <b>Save as PDF</b>.</li>
+        </ul>
+        <h2 id="s7">8. More actions</h2>
+        <ul>
+            <li><b>Reset a finished map</b>: the student can play that map again, and its saved evaluation is deleted. Then press <b>Activate</b> again.</li>
+            <li><b>Edit name</b>, <b>Renew account</b> (extends the account) and <b>Archive student</b> (keeps the records, removes the student from the active list).</li>
+        </ul>
+        <h2 id="s8">9. Training Modules</h2>
+        <ol>
+            <li>Open <b>Training Modules</b> and choose the destination tab.</li>
+            <li>Press <b>+ Add Module</b>. Choose <b>Lesson</b> (students read it on their page) or <b>Game history</b> (the story told at a stop in the game).</li>
+            <li>Tick the <b>sections</b> that can see it (only your own sections). Students in other sections never see it, and other instructors cannot see or change your modules.</li>
+            <li>For a game history, choose the stop name, write the history, and add up to 4 photos with captions. A new paragraph becomes a new screen in the game.</li>
+        </ol>
+        <div class="tip">Only the photos and text you save here are shown in the game. The stop name must match the game's stop.</div>
+        <h2 id="s9">10. Question Bank</h2>
+        <ol>
+            <li>Open <b>Question Bank</b> and choose the destination. Each <b>Question number</b> has the original question (read only) and the questions you added.</li>
+            <li>Press <b>+ Add question</b>: choose the sections that get it (only your own sections), the speaker, the question the student answers out loud, and the key points of a good answer (only you see them).</li>
+            <li>You can edit or delete only your own questions. Other instructors cannot see them, and your questions never reach their students.</li>
+            <li>Each student gets <b>one</b> question per number, picked at random from the original and the ones written for their section. In <b>Scores</b> you can see which questions that student was really asked.</li>
+        </ol>
+
+        <p class="guide-others">Other guides: <a href="guide-student.html">Student</a> &middot; <a href="guide-teacher.html">Instructor</a> &middot; <a href="guide-admin.html">Administrator</a></p>
+    </main>
+</body>
+</html>

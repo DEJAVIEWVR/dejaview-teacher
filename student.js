@@ -102,7 +102,9 @@ $("logoutButton").addEventListener("click", async () => {
 // ---------- training modules (written by instructors, read-only here) ----------
 async function loadModules() {
     try {
-        mods = (await getDocs(collection(db, "modules"))).docs.map(d => ({ id: d.id, ...d.data() }));
+        // only the modules written for my section (or for every section)
+        mods = (await getDocs(collection(db, "modules"))).docs.map(d => ({ id: d.id, ...d.data() }))
+            .filter(m => !Array.isArray(m.sections) || !m.sections.length || m.sections.includes(me.section));
         renderModules();
     } catch (err) { console.error(err); $("modList").innerHTML = '<p class="hint">Unable to load the training modules.</p>'; toast(niceError(err, "Unable to load the training modules."), "err"); }
 }
@@ -111,9 +113,9 @@ function linkButton(link) {
     if (!/^https?:\/\//i.test(link || "")) return "";
     let host = "";
     try { host = new URL(link).hostname.replace(/^www\./, ""); } catch (e) { }
-    let text = "Open link", icon = "&#128279;";
-    if (/youtube\.com|youtu\.be/.test(host)) { text = "Watch video"; icon = "&#9654;"; }
-    else if (/drive\.google|docs\.google/.test(host)) { text = "Open file"; icon = "&#128196;"; }
+    let text = "Open link", icon = '<i class="ico ico-link"></i>';
+    if (/youtube\.com|youtu\.be/.test(host)) { text = "Watch video"; icon = '<i class="ico ico-play"></i>'; }
+    else if (/drive\.google|docs\.google/.test(host)) { text = "Open file"; icon = '<i class="ico ico-file"></i>'; }
     return `<a class="mod-link" href="${esc(link)}" target="_blank" rel="noopener">${icon} ${text}</a>`;
 }
 

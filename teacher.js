@@ -7,8 +7,8 @@ import { toast, ask, choose, askText, busy, niceError } from "./toast.js";
 import { changeMyPassword } from "./account.js";
 
 let me = null, uid = "", sections = [];
-let students = [], sessions = [], evals = {}, marks = {}, capOf = {};
-let view = "active", dirty = false, evalFor = null;
+let students = [], sessions = [], evals = {}, marks = {}, asked = {}, capOf = {};
+let view = "active", dirty = false, evalFor = null, lockedLv = new Set();
 let head = { headName: "", headTitle: "" };
 const warned = new Set(), wasOpen = new Set();
 const ALL = DESTS.map((_, i) => i + 1);
@@ -29,8 +29,7 @@ const natural = (a, b) => String(a).localeCompare(String(b), undefined, { numeri
 const sortName = (a, b) => natural(a.fullname || "", b.fullname || "");
 const sortedSections = () => sections.slice().sort(natural);
 const live = () => students.filter(s => s.status !== "archived");
-const MINUTES = [[30, "30 minutes"], [45, "45 minutes"], [60, "1 hour"], [90, "1.5 hours"], [120, "2 hours"], [180, "3 hours"]];
-const minOpts = sel => MINUTES.map(([m, l]) => `<option value="${m}" ${m === sel ? "selected" : ""}>${l}</option>`).join("");
+const ACTIVATE_MIN = 30;   // how long an activation stays open (the map itself is timed by the game)
 const mapOpts = `<option value="all">All 3 maps</option>${DESTS.map((d, i) => `<option value="${i + 1}">Map ${i + 1} only</option>`).join("")}`;
 const levelsOf = v => v === "all" ? ALL : [+v];
 const SAFE = async (btn, fn) => busy(btn, async () => { try { await fn(); } catch (err) { console.error(err); toast("Action failed. " + niceError(err), "err"); } });
@@ -67,15 +66,17 @@ onAuthStateChanged(auth, async user => {
     } catch (err) { console.error(err); return location.replace("login.html"); }
     uid = user.uid;
     me = t.data();
+    // an admin who is also a teacher gets a way back to the admin dashboard
+    getDoc(doc(db, "admins", user.uid)).then(x => { if (x.exists()) $("adminBtn").style.display = ""; }).catch(() => { });
     sections = me.sections || [];
     $("whoName").textContent = $("whoShort").textContent = me.name || "Instructor";
     $("who").textContent = `Section(s): ${sortedSections().join(", ") || "none assigned"}`;
     $("avatarTxt").textContent = $("avatarTxt2").textContent = initials(me.name);
     document.body.style.visibility = "visible";
     $("playMaps").innerHTML = mapOpts;
-    $("playMinutes").innerHTML = minOpts(45);
-    const opts = sortedSections().map(s => `<option>${esc(s)}</option>`).join("") + (sections.length > 1 ? '<option value="">All my sections</option>' : "");
-    $("sectionFilter").innerHTML = opts;
+    const opts = (sections.length > 1 ? '<option value="">All my sections</option>' : "") + sortedSections().map(s => `<option>${esc(s)}</option>`).join("");
+    $("sectionFilter").innerHTML = opts;   // "All my sections" comes first and is the starting choice
+    $("sectionFilter").selectedIndex = 0;
     $("pendSection").innerHTML = '<option value="">All my sections</option>' + sortedSections().map(s => `<option>${esc(s)}</option>`).join("");   // Pending has its own filter   // starts on the first section so long lists stay short
     await loadCriteria();
     await load(true);
@@ -96,7 +97,7 @@ async function load(first) {
     try {
         // Queries MUST filter by section or the security rules reject them (Firestore 'in' allows up to 30)
         const q = c => getDocs(query(collection(db, c), where("section", "in", sections)));
-        const [s, se, ev, sc, secs, cfg] = await Promise.all([q("students"), q("sessions"), q("evaluations"), q("scores"), getDocs(collection(db, "sections")), getDoc(doc(db, "settings", "app")).catch(() => null)]);
+        const [s, se, ev, sc, aq, secs, cfg] = await Promise.all([q("students"), q("sessions"), q("evaluations"), q("scores"), q("asked").catch(() => ({ docs: [] })), getDocs(collection(db, "sections")), getDoc(doc(db, "settings", "app")).catch(() => null)]);
         if (cfg && cfg.exists()) head = { headName: cfg.data().headName || "", headTitle: cfg.data().headTitle || "" };
         const prevPending = new Set(students.filter(x => x.status === "pending").map(x => x.id));
         const prevMarks = new Set(Object.keys(marks));
@@ -104,6 +105,7 @@ async function load(first) {
         sessions = se.docs.map(d => ({ id: d.id, ...d.data() }));
         evals = {}; ev.docs.forEach(d => evals[d.id] = d.data());
         marks = {}; sc.docs.forEach(d => marks[d.id] = d.data());
+        asked = {}; aq.docs.forEach(d => asked[d.id] = d.data());
         capOf = {}; secs.docs.forEach(d => capOf[d.data().name] = d.data().capacity || 45);
         if (!first) {
             students.filter(x => x.status === "pending" && !prevPending.has(x.id))
@@ -179,8 +181,14 @@ function buildNotes() {
     return notes;
 }
 
+// Notifications work like Facebook: opening the bell marks them as read, and the red number goes away.
+// A notification counts as new again only when its message changes (for example, a new student is pending).
+const seenKey = () => "dvSeen_" + uid;
+const readSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(seenKey()) || "[]")); } catch (e) { return new Set(); } };
+const saveSeen = notes => { try { localStorage.setItem(seenKey(), JSON.stringify(notes.map(n => n.h))); } catch (e) { /* storage blocked */ } };
+
 function updateBell() {
-    const n = buildNotes().length;
+    const seen = readSeen(), n = buildNotes().filter(x => !seen.has(x.h)).length;
     $("bellDot").textContent = n; $("bellDot").style.display = n ? "" : "none";
     document.title = (n ? `(${n}) ` : "") + "DejaView - Instructor Dashboard";
 }
@@ -225,7 +233,7 @@ function mapsChips(s) {
         const done = !!marks[markId(s.id, n)], e = evals[evalId(s.id, n)];
         const score = e ? ` &middot; ${(+e.total).toFixed(0)}${e.status === "draft" ? "*" : ""}` : "";
         const tip = esc(DESTS[n - 1]) + (e ? (e.status === "draft" ? " (draft score, not released yet)" : " (score released)") : "");
-        return `<span class="chip ${done ? "ok" : ""}" title="${tip}">Map ${n}${done ? " &#10003;" : ""}${score}</span>`;
+        return `<span class="chip ${done ? "ok" : ""}" title="${tip}">Map ${n}${done ? ' <i class="ico ico-check"></i>' : ""}${score}</span>`;
     }).join("")}</div>`;
 }
 
@@ -254,13 +262,26 @@ function renderStats() {
     const pend = students.filter(s => s.status === "pending").length;
     const playing = new Set(sessions.filter(isOpen).map(s => s.studentUid).filter(Boolean)).size;
     const grade = needGrading().length;
-    const tile = (n, label, cls, go) => `<a class="stat ${cls}" href="#${go}"><b>${n}</b><span>${label}</span></a>`;
+    const tile = (n, label, cls, go, show) => `<a class="stat ${cls}" href="#${go}"${show ? ` data-show="${show}"` : ""}><b>${n}</b><span>${label}</span></a>`;
     $("statGrid").innerHTML =
         tile(active.length, "Active students", "", "students") +
         tile(pend, "Waiting for approval", pend ? "hot" : "", "pending") +
         tile(playing, "Playing now", playing ? "ok" : "", "live") +
-        tile(grade, "Waiting for evaluation", grade ? "hot" : "", "students");
+        tile(grade, "Waiting for evaluation", grade ? "hot" : "", "students", "grade");
 }
+
+// Clicking "Waiting for evaluation" on Home opens the Student List already filtered.
+// Opening the Student List from the menu always starts on Everyone.
+let presetShow = "";
+$("statGrid").addEventListener("click", e => { const t = e.target.closest("[data-show]"); presetShow = t ? t.dataset.show : ""; });
+window.addEventListener("hashchange", () => {
+    if (location.hash !== "#students") return;
+    $("showFilter").value = presetShow || "all";
+    $("studentView").value = "active"; view = "active";
+    $("searchStudent").value = "";
+    presetShow = "";
+    renderStudents();
+});
 
 // ---------- live monitor (what the student is doing right now) ----------
 let liveDocs = [], bankQs = null, liveTimer = null;
@@ -312,7 +333,7 @@ function renderLive() {
           ${key ? `<div class="l-key"><small>Key points of a good answer</small>${esc(key)}</div>` : ""}
           <div class="l-clocks"><div><small>Map time left</small><b>${x.mapLeft ? mmss(x.mapLeft) : "-"}</b></div>
             <div class="${x.phase === "answering" && x.answerLeft <= 10 ? "hot" : ""}"><small>Answer timer</small><b>${x.phase === "answering" ? x.answerLeft + "s" : "-"}</b></div></div>
-          <div class="pc-btns">${x.viewUrl && !stale ? `<a class="watch" style="flex:1;text-align:center;background:#2e7d32;color:#fff;text-decoration:none;font-weight:700;border-radius:8px;padding:10px 12px" href="${esc(x.viewUrl)}" target="_blank" rel="noopener">&#9658; Watch live (full screen)</a>` : ""}<button class="add-button" data-act="evaluate" data-id="${x.id}">Evaluate</button></div></div>`;
+          <div class="pc-btns">${x.viewUrl && !stale ? `<a class="watch" style="flex:1;text-align:center;background:#2e7d32;color:#fff;text-decoration:none;font-weight:700;border-radius:8px;padding:10px 12px" href="${esc(x.viewUrl)}" target="_blank" rel="noopener"><i class="ico ico-play"></i> Watch live (full screen)</a>` : ""}<button class="add-button" data-act="evaluate" data-id="${x.id}">Evaluate</button></div></div>`;
     }).join("");
 }
 
@@ -387,12 +408,12 @@ function renderStudents() {
          <td><b>${avg == null ? "-" : avg.toFixed(1)}</b><br><small class="hint">${rel} of ${ALL.length} released</small></td>
          <td>${access}<br><small class="hint">Valid until ${d ? d.toLocaleDateString() : "-"}</small></td>
          <td class="acts">${first}
-           <button class="add-button" data-act="evaluate" data-id="${s.id}">Evaluate</button>
-           <button class="edit-button" data-act="viewRec" data-id="${s.id}">Scores</button>
+           ${rel ? `<button class="edit-button" data-act="viewRec" data-id="${s.id}">Scores</button>`
+                 : `<button class="add-button" data-act="evaluate" data-id="${s.id}">Evaluate</button>`}
            <select class="more" data-id="${s.id}"><option value="">More actions...</option>
              <option value="resetMap" ${done ? "" : "disabled"}>Reset a finished map</option>
              <option value="edit">Edit name</option><option value="renew">Renew account</option><option value="archive">Archive student</option></select></td></tr>`;
-    }, "No students match this filter.", sortFn);
+    }, show === "grade" ? "Nobody is waiting for evaluation. A student shows here after finishing a map, until you release the score." : "No students match this filter.", sortFn);
 }
 
 const avgOf = s => { const got = esOf(s); return got.length ? got.reduce((n, e) => n + (+e.total || 0), 0) / got.length : null; };
@@ -402,22 +423,24 @@ const totalOf = scores => Object.values(scores).reduce((n, v) => n + (+v || 0), 
 
 function openEval(s) {
     evalFor = s; dirty = false;
+    lockedLv = new Set(ALL.filter(n => (evals[evalId(s.id, n)] || {}).status === "submitted"));   // released maps are locked until you press Edit
     $("evalTitle").textContent = `Evaluate: ${s.fullname}`;
     $("evalSub").textContent = `${s.studentIdNumber} · ${s.section}`;
     // Criteria are the rows and the 3 maps are the columns, so any number of criteria fits without sideways scrolling
     const evs = DESTS.map((d, i) => evals[evalId(s.id, i + 1)] || {});
     $("evalHead").innerHTML = `<tr><th>Criteria</th>${DESTS.map((d, i) => {
         const played = !!marks[markId(s.id, i + 1)];
-        return `<th>Map ${i + 1}<small>${esc(d)}</small>${played ? '<span class="chip ok">Finished</span>' : '<span class="chip">Not played yet</span>'}</th>`;
+        const lock = lockedLv.has(i + 1);
+        return `<th>Map ${i + 1}<small>${esc(d)}</small>${played ? '<span class="chip ok">Finished</span>' : '<span class="chip">Not played yet</span>'}${lock ? `<button type="button" class="unlock-btn" data-unlock="${i + 1}"><i class="ico ico-edit"></i> Edit</button>` : ""}</th>`;
     }).join("")}</tr>`;
     $("evalBody").innerHTML = CRIT.map(([k, l, m, d]) => `<tr><td class="crit-lbl">${esc(l)} <span class="max-pill">max ${m}</span>${d ? `<small class="crit-d">${esc(d)}</small>` : ""}</td>
-          ${DESTS.map((d, i) => `<td><input class="eval-in" type="number" step="0.5" min="0" max="${m}" data-lv="${i + 1}" data-k="${k}" data-max="${m}" placeholder="0-${m}" value="${scoreRaw(evs[i], k)}"></td>`).join("")}</tr>`).join("")
+          ${DESTS.map((d, i) => `<td><input class="eval-in" type="number" step="0.5" min="0" max="${m}" data-lv="${i + 1}" data-k="${k}" data-max="${m}" placeholder="0-${m}" value="${scoreRaw(evs[i], k)}" ${lockedLv.has(i + 1) ? "disabled" : ""}></td>`).join("")}</tr>`).join("")
         + `<tr class="tot"><td>Total <small>(of 100)</small></td>${evs.map((e, i) => `<td><b class="evTotal" data-lv="${i + 1}">${e.total != null ? (+e.total).toFixed(1) : "-"}</b></td>`).join("")}</tr>`
-        + `<tr><td>Status</td>${evs.map(e => `<td>${e.status === "submitted" ? '<span class="chip ok">Released</span>' : e.status === "draft" ? '<span class="chip warn">Draft</span>' : '<span class="chip">Not graded</span>'}</td>`).join("")}</tr>`;
+        + `<tr><td>Status</td>${evs.map((e, i) => `<td data-st="${i + 1}">${e.status === "submitted" ? '<span class="chip ok">Released <i class="ico ico-lock"></i></span>' : e.status === "draft" ? '<span class="chip warn">Draft</span>' : '<span class="chip">Not graded</span>'}</td>`).join("")}</tr>`;
     $("evalRemarks").innerHTML = DESTS.map((d, i) => {
         const e = evals[evalId(s.id, i + 1)] || {}, txt = e.remarks || "";
         return `<div class="rem-box"><label for="rem${i + 1}">Remarks &middot; Map ${i + 1}: ${esc(d)}</label>
-          <textarea class="rem" id="rem${i + 1}" data-lv="${i + 1}" rows="3" maxlength="200" placeholder="Optional. Write your comments for this map (up to 200 characters).">${esc(txt)}</textarea>
+          <textarea class="rem" id="rem${i + 1}" data-lv="${i + 1}" rows="3" maxlength="200" ${lockedLv.has(i + 1) ? "disabled" : ""} placeholder="Optional. Write your comments for this map (up to 200 characters).">${esc(txt)}</textarea>
           <span class="rem-count">${txt.length} / 200</span></div>`;
     }).join("");
     $("evalDialog").showModal();
@@ -426,7 +449,14 @@ function openEval(s) {
 $("evalBody").addEventListener("input", e => {
     const inp = e.target.closest(".eval-in"); if (!inp) return;
     dirty = true;
-    inp.classList.toggle("bad", +inp.value > +inp.dataset.max || +inp.value < 0);
+    // Over the maximum: fix it right away and tell the teacher (no need to leave the box first)
+    if (inp.value !== "" && (+inp.value > +inp.dataset.max || +inp.value < 0)) {
+        const max = +inp.dataset.max, was = inp.value, name = (inp.closest("tr").querySelector(".crit-lbl").childNodes[0].textContent || "").trim();
+        inp.value = +was < 0 ? 0 : max;
+        inp.classList.add("shake"); setTimeout(() => inp.classList.remove("shake"), 500);
+        toast(`${name}: the highest score is ${max}. You typed ${was}, so it was changed to ${inp.value}.`, "warn");
+    }
+    inp.classList.remove("bad");
     const ins = [...$("evalBody").querySelectorAll(`.eval-in[data-lv="${inp.dataset.lv}"]`)];
     $("evalBody").querySelector(`.evTotal[data-lv="${inp.dataset.lv}"]`).textContent =
         ins.some(i => i.value !== "") ? ins.reduce((n, i) => n + clamp(+i.value, +i.dataset.max), 0).toFixed(1) : "-";
@@ -448,11 +478,23 @@ $("evalRemarks").addEventListener("input", e => {
     ta.parentElement.querySelector(".rem-count").textContent = `${ta.value.length} / 200`;
 });
 
+// "Edit" above a released map: unlock it (the student keeps seeing the old score until you press Submit & release again)
+$("evalHead").addEventListener("click", e => {
+    const b = e.target.closest("[data-unlock]"); if (!b) return;
+    const lv = +b.dataset.unlock;
+    lockedLv.delete(lv);
+    document.querySelectorAll(`#evalBody .eval-in[data-lv="${lv}"], #evalRemarks .rem[data-lv="${lv}"]`).forEach(x => { x.disabled = false; });
+    const st = $("evalBody").querySelector(`td[data-st="${lv}"]`); if (st) st.innerHTML = '<span class="chip warn">Editing</span>';
+    b.remove();
+    toast(`Map ${lv} is unlocked. Change the scores, then press Submit & release to save the new result.`, "info");
+});
+
 async function closeEval() {
     if (dirty && !(await ask("You have unsaved scores. Close without saving?", { title: "Unsaved scores", ok: "Close anyway", danger: true }))) return;
     dirty = false; $("evalDialog").close();
 }
 $("evalCancel").addEventListener("click", closeEval);
+$("evalX").addEventListener("click", closeEval);
 $("evalDialog").addEventListener("cancel", ev => { ev.preventDefault(); closeEval(); });   // Esc key
 
 async function saveEval(submit, btn) {
@@ -460,11 +502,11 @@ async function saveEval(submit, btn) {
     if (!s) return;
     const rows = DESTS.map((_, i) => ({ lv: i + 1, ins: [...$("evalBody").querySelectorAll(`.eval-in[data-lv="${i + 1}"]`)] }));
     if (rows.some(r => r.ins.some(i => i.classList.contains("bad")))) return toast("Some scores are above the maximum. Please fix the red boxes.", "err");
-    const todo = rows.filter(r => r.ins.some(i => i.value !== ""));
-    if (!todo.length) return toast("Enter at least one score first.", "warn");
+    const todo = rows.filter(r => !lockedLv.has(r.lv) && r.ins.some(i => i.value !== ""));
+    if (!todo.length) return toast(lockedLv.size ? "These maps are already released and locked. Press Edit above a map to change it." : "Enter at least one score first.", "warn");
     if (submit) {
         const blank = todo.some(r => r.ins.some(i => i.value === ""));
-        const msg = `${blank ? "Some criteria are blank and will count as 0. " : ""}Release ${todo.length} result${todo.length > 1 ? "s" : ""} to ${s.fullname}? The student will see them right away.`;
+        const msg = `${blank ? "Some criteria are blank and will count as 0. " : ""}Release ${todo.length} result${todo.length > 1 ? "s" : ""} to ${s.fullname}? These become the final score. The student will see them right away.`;
         if (!(await ask(msg, { title: "Submit & release", ok: "Submit & release" }))) return;
     } else if (todo.some(r => (evals[evalId(s.id, r.lv)] || {}).status === "submitted") &&
         !(await ask("Saving as draft hides an already released result from the student. Continue?", { title: "Hide released result" }))) return;
@@ -484,8 +526,9 @@ async function saveEval(submit, btn) {
             await setDoc(doc(db, "evaluations", evalId(s.id, lv)), data);
         }
         dirty = false; $("evalDialog").close();
-        toast(submit ? `Evaluation submitted. ${s.fullname} can now see the result.` : "Draft saved. The student cannot see it yet.");
+        toast(submit ? `Released. ${s.fullname} can now see the result. It is final.` : "Draft saved. The student cannot see it yet.");
         await load(false);
+        if (submit) openView(s);   // the Evaluate button is now "Scores", so show the final grades right away
     });
 }
 $("evalSave").addEventListener("click", e => saveEval(false, e.currentTarget));
@@ -503,19 +546,37 @@ function openView(s) {
     $("viewHead").innerHTML = `<tr><th>Criteria</th>${DESTS.map((d, i) => `<th>Map ${i + 1}<small>${esc(d)}</small></th>`).join("")}</tr>`;
     $("viewBody").innerHTML = rub.map(([k, l, m]) => `<tr><td class="crit-lbl">${esc(l)} <span class="max-pill">max ${m}</span></td>${evs.map(e => `<td>${num(e, k)}</td>`).join("")}</tr>`).join("")
         + `<tr class="tot"><td>Total <small>(of 100)</small></td>${evs.map(e => `<td><b>${e ? (+e.total || 0).toFixed(1) : "-"}</b></td>`).join("")}</tr>`
-        + `<tr><td>Status</td>${evs.map(e => `<td>${!e ? '<span class="chip">Not graded</span>' : e.status === "submitted" ? '<span class="chip ok">Released</span>' : '<span class="chip warn">Draft</span>'}</td>`).join("")}</tr>`;
+        + `<tr><td>Status</td>${evs.map(e => `<td>${!e ? '<span class="chip">Not graded</span>' : e.status === "submitted" ? '<span class="chip ok">Released</span>' : '<span class="chip warn">Draft</span>'}</td>`).join("")}</tr>`
+        + (() => { const a = avgOf(s), n = evs.filter(Boolean).length; return `<tr class="tot"><td>Average of all maps</td><td colspan="${DESTS.length}"><b>${a == null ? "-" : a.toFixed(1) + " / 100"}</b> <small>(${n} of ${DESTS.length} maps graded)</small></td></tr>`; })();
     $("viewRemarks").innerHTML = DESTS.map((d, i) => {
         const e = evs[i];
         return `<div class="rem-view"><b>Map ${i + 1} &middot; ${esc(d)}</b><p class="${e && e.remarks ? "" : "none"}">${e && e.remarks ? esc(e.remarks) : "No remarks."}</p></div>`;
     }).join("");
+    if (!$("viewAsked")) $("viewRemarks").insertAdjacentHTML("afterend", '<div id="viewAsked"></div>');
+    $("viewAsked").innerHTML = askedHtml(s, esc);
     $("viewDialog").showModal();
 }
+// The questions this student was really asked (saved by the game when the map starts)
+function askedList(s, lv) {
+    const a = asked[markId(s.id, lv)];
+    return a && a.q ? Object.keys(a.q).sort((x, y) => x - y).map(k => ({ no: k, ...a.q[k] })) : [];
+}
+function askedHtml(s, esc) {
+    const parts = DESTS.map((d, i) => {
+        const l = askedList(s, i + 1);
+        if (!l.length) return "";
+        return `<div class="rem-view"><b>Questions asked &middot; Map ${i + 1} &middot; ${esc(d)}</b>${l.map(x => `<p class="qa"><b>${esc(x.no)}.</b> ${esc(x.text || "")}<br><small>${esc(x.stop ? x.stop + " · " : "")}${esc(x.speaker || "")}</small></p>`).join("")}</div>`;
+    }).join("");
+    return parts;
+}
 $("viewClose").addEventListener("click", () => $("viewDialog").close());
+$("viewEdit").addEventListener("click", () => { const s = viewing; $("viewDialog").close(); if (s) openEval(s); });   // change a grade or grade another map
+$("viewX").addEventListener("click", () => $("viewDialog").close());
 $("viewPrint").addEventListener("click", () => {
     const s = viewing, rows = ALL.map(n => evals[evalId(s.id, n)]).filter(Boolean);
     if (!rows.length) return toast("This student has no saved evaluation yet.", "warn");
     toast("Choose \"Save as PDF\" in the print window.", "info");
-    printReport({ name: s.fullname, id: s.studentIdNumber, section: s.section, instructor: me.name || "", rows });
+    printReport({ name: s.fullname, id: s.studentIdNumber, section: s.section, instructor: me.name || "", rows, asked: ALL.map(n => ({ level: n, destination: DESTS[n - 1], list: askedList(s, n) })).filter(x => x.list.length) });
 });
 
 function sheetFor(sec, today) {
@@ -604,7 +665,7 @@ async function runAction(act, s, btn) {
                 if (isExpired(s)) return toast("This account has expired. Renew it first.", "err");
                 const levels = levelsOf($("playMaps").value).filter(n => !marks[markId(s.id, n)]);
                 if (!levels.length) return toast(`${s.fullname} already finished ${$("playMaps").value === "all" ? "all the maps" : "that map"}. Use More actions > Reset a finished map to allow a retake.`, "warn");
-                const c = await openSessions(s.section, levels, +$("playMinutes").value, s.id);
+                const c = await openSessions(s.section, levels, ACTIVATE_MIN, s.id);
                 const skipped = levelsOf($("playMaps").value).length - levels.length;
                 toast(`${s.fullname} can play Map${levels.length > 1 ? "s" : ""} ${levels.join(", ")} until ${hhmm(c)}.${skipped ? ` (${skipped} finished map${skipped > 1 ? "s" : ""} skipped)` : ""}`); break;
             }
@@ -616,9 +677,12 @@ async function runAction(act, s, btn) {
                 if (!done.length) return toast("This student has not finished any map.", "warn");
                 const lv = await choose({ title: "Reset a map", message: `Which finished map should ${s.fullname} be allowed to play again?`, options: done.map(n => ({ value: n, label: `Map ${n} - ${DESTS[n - 1]}` })), ok: "Reset" });
                 if (lv === null) return;
-                if (!(await ask(`Reset Map ${lv} for ${s.fullname}? The map unlocks again. Their saved evaluation stays until you change it. You still need to press Activate.`, { title: "Reset map", ok: "Reset map", danger: true }))) return;
+                const hadEval = !!evals[evalId(s.id, +lv)];
+                if (!(await ask(`Reset Map ${lv} for ${s.fullname}? The map unlocks again${hadEval ? ", and the evaluation you already saved for this map is deleted too" : ""}. You still need to press Activate.`, { title: "Reset map", ok: "Reset map", danger: true }))) return;
                 await deleteDoc(doc(db, "scores", markId(s.id, +lv)));
-                toast(`Map ${lv} was reset for ${s.fullname}. Press Activate to let them play it again.`); break;
+                if (hadEval) await deleteDoc(doc(db, "evaluations", evalId(s.id, +lv)));
+                if (asked[markId(s.id, +lv)]) await deleteDoc(doc(db, "asked", markId(s.id, +lv))).catch(() => {});   // the next try gets fresh random questions
+                toast(`Map ${lv} was reset for ${s.fullname}${hadEval ? " (its evaluation was cleared)" : ""}. Press Activate to let them play it again.`); break;
             }
         }
         await load(false);
@@ -666,27 +730,38 @@ $("remindOk").addEventListener("click", () => $("remindDialog").close());
 window.addEventListener("beforeunload", e => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
 
 // ---------- bell, password, hash toasts, logout ----------
+const noteIcon = h => /pending/i.test(h) ? '<i class="ico ico-user"></i>' : /draft/i.test(h) ? '<i class="ico ico-file"></i>' : /evaluation/i.test(h) ? '<i class="ico ico-doc"></i>'
+    : /not registered/i.test(h) ? '<i class="ico ico-users"></i>' : /capacity|expired|closing/i.test(h) ? '<i class="ico ico-alert"></i>' : /expires/i.test(h) ? '<i class="ico ico-clock"></i>' : '<i class="ico ico-bell"></i>';
 $("bell").addEventListener("click", () => {
-    const notes = buildNotes();
+    const notes = buildNotes(), seen = readSeen();      // what was already read BEFORE opening
+    const fresh = notes.filter(n => !seen.has(n.h)).length;
+    const row = n => { const isNew = !seen.has(n.h);
+        return `<div class="note ${n.t} ${isNew ? "unread" : "read"}"><span class="ic">${noteIcon(n.h)}</span>
+          <div class="nt"><b>${esc(n.h)}</b><span>${esc(n.p)}</span></div>
+          <span class="nstate">${isNew ? "NEW" : '<i class="ico ico-check"></i> Read'}</span></div>`; };
+    $("noteSub").textContent = notes.length ? (fresh ? `${fresh} new, ${notes.length - fresh} already read.` : "You have read everything. Nothing new.") : "";
     $("noteBody").innerHTML = notes.length
-        ? notes.map(n => `<div class="note ${n.t}"><b>${esc(n.h)}</b>${esc(n.p)}</div>`).join("")
-        : '<div class="note ok"><b>All clear</b>Nothing needs your attention right now.</div>';
+        ? [...notes.filter(n => !seen.has(n.h)), ...notes.filter(n => seen.has(n.h))].map(row).join("")
+        : '<div class="note ok read"><span class="ic"><i class="ico ico-checkc"></i></span><div class="nt"><b>All clear</b><span>Nothing needs your attention right now.</span></div></div>';
     $("noteDialog").showModal();
+    saveSeen(notes); updateBell();   // mark as read
 });
 $("noteClose").addEventListener("click", () => $("noteDialog").close());
 
 
-// manual "Watch live": type the tablet's address if the card has no Watch button
+// manual "Watch live": type the phone's address if the card has no Watch button
 try { $("watchIp").value = localStorage.getItem("dvWatchIp") || ""; } catch (e) {}
 $("watchGo").addEventListener("click", () => {
     let v = $("watchIp").value.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
-    if (!v) return toast("Type the tablet's IP address first, for example 192.168.1.25", "warn");
+    if (!v) return toast("Type the student phone's IP address first, for example 192.168.1.25", "warn");
     if (!v.includes(":")) v += ":8080";
     try { localStorage.setItem("dvWatchIp", v); } catch (e) {}
     window.open("http://" + v + "/", "_blank", "noopener");
 });
 
 $("pwBtn").addEventListener("click", changeMyPassword);
+$("adminBtn").addEventListener("click", () => location.assign("admin.html"));
+$("guideBtn").addEventListener("click", () => window.open("guide-teacher.html", "_blank", "noopener"));
 
 $("logoutButton").addEventListener("click", async () => {
     if (!(await ask("Log out of the instructor dashboard?", { title: "Log out", ok: "Log out" }))) return;

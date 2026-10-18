@@ -37,7 +37,7 @@ export function rubricOf(e) {
 export const rubricFor = list => rubricOf((list || []).find(Boolean));
 
 // Opens the browser print window with a clean report. Choose "Save as PDF" as the destination.
-export function printReport({ name, id, section, instructor, rows }) {
+export function printReport({ name, id, section, instructor, rows, asked }) {
     let area = document.getElementById("printArea");
     if (!area) { area = document.createElement("div"); area.id = "printArea"; document.body.appendChild(area); }
 
@@ -61,6 +61,7 @@ export function printReport({ name, id, section, instructor, rows }) {
       <tr class="pr-total"><td>Total <small>(of 100)</small></td>${sorted.map(r => `<td><b>${fmt(r.total)}</b></td>`).join("")}</tr>
       </tbody></table>
       ${sorted.some(r => r.remarks) ? `<div class="pr-remarks"><b>Remarks</b>${sorted.filter(r => r.remarks).map(r => `<div class="pr-rem-item"><strong>${esc(r.destination)}</strong><p>${esc(r.remarks)}</p></div>`).join("")}</div>` : ""}
+      ${asked && asked.length ? `<div class="pr-remarks"><b>Questions asked</b>${asked.map(a => `<div class="pr-rem-item"><strong>Map ${a.level} &ndash; ${esc(a.destination)}</strong>${a.list.map(x => `<p>${esc(x.no)}. ${esc(x.text || "")} <small>(${esc(x.stop ? x.stop + ", " : "")}${esc(x.speaker || "")})</small></p>`).join("")}</div>`).join("")}</div>` : ""}
       <p class="pr-sum">Levels evaluated: ${sorted.length} &middot; Average total: ${avg.toFixed(1)} / 100</p>
       <div class="pr-sign"><div><span></span>Instructor: ${esc(instructor || "")}</div><div><span></span>Date</div></div>`;
 

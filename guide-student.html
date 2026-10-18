@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DejaView - Student Guide</title>
+    <link rel="stylesheet" href="dejaview.css?v=20261017a">
+    <style>
+        .guide{max-width:820px;margin:0 auto;padding:24px 18px 60px}
+        .guide h2{margin:28px 0 8px;color:var(--m);font-family:Georgia,serif}
+        .guide ol,.guide ul{margin:6px 0 12px 22px;padding:0;line-height:1.65}
+        .guide li{margin:4px 0}
+        .guide .tip{background:#fff8e6;border-left:4px solid var(--g);border-radius:8px;padding:10px 14px;margin:10px 0;line-height:1.55}
+        .guide .toc{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px}
+        .guide .toc a{background:#f4f1ee;border-radius:999px;padding:6px 14px;text-decoration:none;color:var(--ink);font-weight:600;font-size:.88rem}
+        .guide .toc a:hover{background:var(--m);color:#fff}
+        .guide kbd{background:#eee;border:1px solid #ccc;border-radius:5px;padding:1px 7px;font-size:.85em}
+        .guide-others{margin-top:30px;font-size:.9rem}
+    </style>
+</head>
+<body style="visibility:visible">
+    <header>
+        <img src="images/htm-logo.png" onerror="this.onerror=null;this.src='images/bulsu-seal.png'" alt="Department logo">
+        <h1>DejaView User Guide</h1>
+        <button class="logout-button" onclick="window.close();if(!window.closed)history.length>1?history.back():location.href='login.html'">Close</button>
+    </header>
+    <main class="guide">
+        <h1 style="margin:0;color:var(--m);font-family:Georgia,serif">Student Guide</h1>
+        <p class="hint">How to register, play a map and see your results.</p>
+        <div class="toc"><a href="#s0">1. Register (VR app)</a><a href="#s1">2. Log in and pick a map</a><a href="#s2">3. Playing a map</a><a href="#s3">4. Modules and results</a></div>
+        <h2 id="s0">1. Register (VR app)</h2>
+        <ol>
+            <li>Open the DejaView VR app and press <b>Create account</b>.</li>
+            <li>Type your name, your Student ID, your section and your own email, then read the data privacy notice and agree. Your email is only used to send a password reset link. Nobody else sees it, and it is never used for anything else.</li>
+            <li>Create a password (the app tells you the rules) and submit.</li>
+            <li>Wait for your instructor to approve your account.</li>
+        </ol>
+        <h2 id="s1">2. Log in and pick a map</h2>
+        <ol>
+            <li>Log in with your Student ID and password.</li>
+            <li><b>Forgot your password?</b> Type your Student ID, tap <b>Forgot password?</b>, then open the email we send you (check Spam too) and choose a new password. If your account was made before emails were added, ask your instructor.</li>
+            <li>Your instructor <b>activates</b> you when it is your turn. If you are not activated, the app tells you.</li>
+            <li>Look at a map card and press <kbd>X</kbd> to travel. Finish the maps in order: Level 1 first.</li>
+        </ol>
+        <h2 id="s2">3. Playing a map</h2>
+        <ol>
+            <li>Look at the Tour Guide and press <kbd>A</kbd> to talk. He explains the rules.</li>
+            <li>The <b>Criteria</b> board shows what your instructor will judge. Press <kbd>A</kbd> to read the next page.</li>
+            <li>Follow the arrows on the ground to the next stop. Step into the glowing ring and read the story. Press <kbd>A</kbd> for the next screen.</li>
+            <li>The visitors then ask you a question. Answer <b>out loud</b> like a real tour guide. You have 30 seconds. Press <kbd>A</kbd> when you are done.</li>
+            <li>The map clock (5 minutes) only runs while you read stories and answer. Walking does not use time.</li>
+            <li>At the end, the result board shows. Your instructor will evaluate you. Press <kbd>A</kbd> to go back to the maps.</li>
+        </ol>
+        <div class="tip">Each map is a one-time test. If something went wrong with your phone, tell your instructor: they can reset the map for you.</div>
+        <h2 id="s3">4. Training modules and your results (VR app)</h2>
+        <ul>
+            <li>After you log in, the <b>Student Dashboard</b> has your <b>Training Modules</b> (lessons and stories for each destination) and your <b>records</b> (your scores).</li>
+            <li>Read the training modules before you play a map.</li>
+            <li>Your scores appear after your instructor releases them. They show every map, your remarks and your average.</li>
+        </ul>
+        <div class="tip">Students use the VR app only. The website is for instructors and the administrator.</div>
+
+        <p class="guide-others">Other guides: <a href="guide-student.html">Student</a> &middot; <a href="guide-teacher.html">Instructor</a> &middot; <a href="guide-admin.html">Administrator</a></p>
+    </main>
+</body>
+</html>

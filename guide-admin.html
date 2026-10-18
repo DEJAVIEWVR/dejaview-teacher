@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DejaView - Administrator Guide</title>
+    <link rel="stylesheet" href="dejaview.css?v=20261017i">
+    <style>
+        .guide{max-width:820px;margin:0 auto;padding:24px 18px 60px}
+        .guide h2{margin:28px 0 8px;color:var(--m);font-family:Georgia,serif}
+        .guide ol,.guide ul{margin:6px 0 12px 22px;padding:0;line-height:1.65}
+        .guide li{margin:4px 0}
+        .guide .tip{background:#fff8e6;border-left:4px solid var(--g);border-radius:8px;padding:10px 14px;margin:10px 0;line-height:1.55}
+        .guide .toc{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px}
+        .guide .toc a{background:#f4f1ee;border-radius:999px;padding:6px 14px;text-decoration:none;color:var(--ink);font-weight:600;font-size:.88rem}
+        .guide .toc a:hover{background:var(--m);color:#fff}
+        .guide kbd{background:#eee;border:1px solid #ccc;border-radius:5px;padding:1px 7px;font-size:.85em}
+        .guide-others{margin-top:30px;font-size:.9rem}
+    </style>
+</head>
+<body style="visibility:visible">
+    <header>
+        <img src="images/htm-logo.png" onerror="this.onerror=null;this.src='images/bulsu-seal.png'" alt="Department logo">
+        <h1>DejaView User Guide</h1>
+        <button class="logout-button" onclick="window.close();if(!window.closed)history.length>1?history.back():location.href='login.html'">Close</button>
+    </header>
+    <main class="guide">
+        <h1 style="margin:0;color:var(--m);font-family:Georgia,serif">Administrator Guide</h1>
+        <p class="hint">How to manage sections, teachers and grading criteria.</p>
+        <div class="toc"><a href="#s0">1. Log in</a><a href="#s1">2. Home</a><a href="#s2">3. Sections</a><a href="#s3">4. Teacher accounts</a><a href="#s4">5. Student list</a><a href="#s5">6. Question Bank</a><a href="#s6">7. Grading criteria</a><a href="#s7">8. Being a teacher too</a></div>
+        <h2 id="s0">1. Log in</h2>
+        <ol>
+            <li>Open the DejaView website and log in with your admin email and password.</li>
+            <li><b>Forgot your password?</b> Type your email on the login page and press <b>Forgot password?</b>. A reset link is sent to that email. For accounts made before emails were added, use the <code>reset-password.js</code> tool.</li>
+            <li>Press your name at the top right to <b>Edit name &amp; title</b> (shown on printouts), open this <b>User Guide</b> or <b>Change password</b>.</li>
+        </ol>
+        <h2 id="s1">2. Home</h2>
+        <p>Home shows the number of sections, teachers, active students and students waiting for approval, and one card per section (registered students, pending approvals and the teacher). The bell at the top shows what needs your attention. Open it and the red number disappears: new items are marked <b>NEW</b>, and the ones you have seen turn grey with <b>Read</b>.</p>
+        <h2 id="s2">3. Sections</h2>
+        <ol>
+            <li>Open <b>Sections</b>. Type one or more section names (separated by commas) and set the capacity (students per section).</li>
+            <li>Press <b>Add Section(s)</b>. These sections appear in the VR register screen.</li>
+            <li>A section that still has students cannot be deleted.</li>
+        </ol>
+        <h2 id="s3">4. Teacher accounts</h2>
+        <ol>
+            <li>Open <b>Teacher Accounts</b>.</li>
+            <li>Type the full name, the 10-digit Employee ID, the teacher's own email (used for Forgot password) and a temporary password (8 or more characters, with a letter and a number).</li>
+            <li>Tick every section the teacher handles and press <b>Create Teacher</b>.</li>
+            <li>Press <b>Sections</b> on a teacher to change the sections. Press <b>Archive</b> when a teacher leaves: the teacher cannot log in, but the records stay.</li>
+            <li>Above the table, change <b>List</b> to <b>Archived teachers</b> to see them and press <b>Restore</b> to bring one back.</li>
+        </ol>
+        <h2 id="s4">5. Student list</h2>
+        <p>Open <b>Student List</b> to see all students by section. This list is for viewing only. Instructors approve and manage their own students.</p>
+        <h2 id="s4b">Training Modules</h2>
+        <ol>
+            <li>Open <b>Training Modules</b>. You see every module of every teacher and can edit or delete any of them.</li>
+            <li>Press <b>+ Add Module</b> to add a lesson or a game history for <b>all sections</b> or only the sections you tick.</li>
+            <li>A module a teacher adds reaches only the sections that teacher ticked. Students in other sections never see it.</li>
+        </ol>
+        <h2 id="s5">6. Question Bank</h2>
+        <ol>
+            <li>Open <b>Question Bank</b> and choose a map. You see everything: the original questions and every question the teachers added (with their name and sections).</li>
+            <li>Only you can edit the original questions. Press <b>+ Add question</b> to add one for <b>all sections</b> or only the sections you tick (up to 10 per question number). Teachers can add questions only for their own sections, and only they and you can see those.</li>
+            <li>In the game, every student gets <b>one</b> question per number, picked at random from the original and the ones written for their section.</li>
+        </ol>
+        <h2 id="s6">7. Grading criteria</h2>
+        <ol>
+            <li>Open <b>Grading Criteria</b>.</li>
+            <li>Rename a criterion, change its maximum points and write its short explanation. Press <b>+ Add criterion</b> or the <b>X</b> to remove one (1 to 10 criteria).</li>
+            <li>The maximums must add up to exactly <b>100</b>. Then press <b>Save criteria</b>.</li>
+            <li>Students see the criteria and explanations in the game before each map. Instructors see them in the Evaluate window.</li>
+        </ol>
+        <div class="tip">Set the criteria before instructors start grading. Scores that were already released keep their numbers.</div>
+        <h2 id="s7">8. Being a teacher too</h2>
+        <ol>
+            <li>Press your name at the top right and choose <b>Also be a teacher</b>. Type your full name and your 10-digit Employee ID, then tick the sections you will handle.</li>
+            <li>After that, the same menu shows <b>Open my teacher dashboard</b>. On the teacher dashboard, the menu has <b>Open admin dashboard</b> to come back.</li>
+        </ol>
+
+        <p class="guide-others">Other guides: <a href="guide-student.html">Student</a> &middot; <a href="guide-teacher.html">Instructor</a> &middot; <a href="guide-admin.html">Administrator</a></p>
+    </main>
+</body>
+</html>
