@@ -7,9 +7,9 @@ export const TERM_MONTHS = 6;    // how long a student account stays valid after
 // Instructors can still type any name; it must match the game's wood sign. Add your stops here.
 export const STOPS = {
     // One entry per question, in the order students meet them. "" = this question has no stop name yet (shown as "Question N").
-    "Our Lady of Lourdes Grotto": ["Lady of Lourdes Statue", "Grotto Bridge", "Grotto Building", "", ""],   // 3 outside + 2 inside the Grotto
+    "Our Lady of Lourdes Grotto": ["Lady of Lourdes Statue", "Grotto Bridge", "Grotto Building", "Church Altar", "Church"],   // 3 outside + 2 inside the Grotto
     "Mt. Balagbag": ["INN", "balagbag resort", "rock picture spot", "rock picture spot 2", "peak"],   // the 5 stops that ask a question
-    "Padre Pio": []
+    "Padre Pio": ["Stairs", "Crux", "Hand", "Rosaries", "Padre Pio Statue"]
 };
 // The most questions a map asks (extra questions beyond this are never used by the game)
 export const MAX_SLOTS = { "Our Lady of Lourdes Grotto": 5, "Mt. Balagbag": 5, "Padre Pio": 5 };
