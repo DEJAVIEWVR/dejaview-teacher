@@ -26,8 +26,18 @@ export const cleanName = s => String(s || "").trim().replace(/\//g, " ").replace
 
 function makeDialog(html) {
     const d = document.createElement("dialog");
-    d.className = "dv-dialog";
+    d.className = "dv-dialog dlg-fixed";
     d.innerHTML = html;
+    // title + X stay on top, the buttons stay at the bottom, only the middle scrolls
+    const h2 = d.querySelector("h2"), row = d.querySelector(".row");
+    const top = document.createElement("div"); top.className = "dlg-top";
+    const hd = document.createElement("div"); if (h2) hd.appendChild(h2); top.appendChild(hd);
+    const x = document.createElement("button"); x.type = "button"; x.className = "dlg-x"; x.setAttribute("aria-label", "Close"); x.title = "Close"; x.setAttribute("data-cancel", ""); x.innerHTML = '<i class="ico ico-x"></i>';
+    top.appendChild(x);
+    const body = document.createElement("div"); body.className = "dlg-scroll";
+    while (d.firstChild) body.appendChild(d.firstChild);
+    d.appendChild(top); d.appendChild(body);
+    if (row) { row.classList.add("dlg-foot"); d.appendChild(row); }
     document.body.appendChild(d);
     return d;
 }
@@ -38,7 +48,7 @@ function run(d, read) {
         let result = null;
         d.addEventListener("close", () => { d.remove(); resolve(result); });
         d.querySelector("[data-ok]").addEventListener("click", () => { result = read(); d.close(); });
-        d.querySelector("[data-cancel]").addEventListener("click", () => { result = null; d.close(); });
+        d.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => { result = null; d.close(); }));
         d.showModal();
         const first = d.querySelector("select,input,[data-ok]");
         if (first) first.focus();
@@ -63,7 +73,7 @@ export function choose({ title, message = "", options, value, ok = "OK" }) {
 // options: [{value,label}], selected: [values] -> array of ticked values, or null if cancelled
 export function pickMany({ title, message = "", options, selected = [], ok = "Save" }) {
     const d = makeDialog(`<h2>${e(title)}</h2>${message ? `<p>${e(message)}</p>` : ""}
-        <div class="checks">${options.map(o => `<label class="chk"><input type="checkbox" value="${e(o.value)}" ${selected.includes(o.value) ? "checked" : ""}> ${e(o.label)}</label>`).join("") || "<p class='hint'>Nothing to pick yet.</p>"}</div>
+        <div class="checks">${options.map(o => `<label class="chk${o.disabled ? " taken" : ""}"><input type="checkbox" value="${e(o.value)}" ${selected.includes(o.value) ? "checked" : ""} ${o.disabled ? "disabled" : ""}> ${e(o.label)}${o.note ? ` <small>(${e(o.note)})</small>` : ""}</label>`).join("") || "<p class='hint'>Nothing to pick yet.</p>"}</div>
         <div class="row"><button type="button" class="edit-button" data-cancel>Cancel</button><button type="button" class="add-button" data-ok>${e(ok)}</button></div>`);
     return run(d, () => [...d.querySelectorAll("input:checked")].map(i => i.value));
 }
@@ -84,7 +94,7 @@ export function askText({ title, label = "", value = "", min = 1, max = 100, ok 
         };
         d.addEventListener("close", () => { d.remove(); resolve(result); });
         d.querySelector("[data-ok]").addEventListener("click", submit);
-        d.querySelector("[data-cancel]").addEventListener("click", () => d.close());
+        d.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => d.close()));
         inp.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); submit(); } });
         d.showModal(); inp.focus(); inp.select();
     });
@@ -136,7 +146,7 @@ export function askFields({ title, message = "", fields, ok = "Save", validate }
         };
         d.addEventListener("close", () => { d.remove(); resolve(result); });
         d.querySelector("[data-ok]").addEventListener("click", submit);
-        d.querySelector("[data-cancel]").addEventListener("click", () => d.close());
+        d.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => d.close()));
         d.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); submit(); } });
         d.showModal(); d.querySelector("input").focus();
     });

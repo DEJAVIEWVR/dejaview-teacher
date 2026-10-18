@@ -75,8 +75,8 @@ function groupsFor(d) {
 }
 
 const card = (x, n) => `<div class="qcard"><div class="qtop">
-        <span class="chip">${n}. ${esc(x.speakerNPC || "Tourist")} · ${esc(who(x))}</span>
-        <span>${canEdit(x) ? `<button class="edit-button" data-q="edit" data-id="${x.id}">Edit</button>` : '<small class="hint">Read only</small>'}
+        <span class="chip">${n}. ${esc(x.speakerNPC || "Tourist")}</span>
+        <span class="qright"><span class="chip by">${x.isExtra ? "Added by " + esc(who(x)) : "Original question"}</span>${canEdit(x) ? `<button class="edit-button" data-q="edit" data-id="${x.id}">Edit</button>` : '<small class="hint">Read only</small>'}
         ${x.isExtra && canEdit(x) ? `<button class="delete-button" data-q="del" data-id="${x.id}">Delete</button>` : ""}</span></div>
         <p>${esc(x.questionText)}</p>
         <small class="hint">Sections: ${esc(reach(x))}</small>
@@ -227,4 +227,5 @@ $("printQ").addEventListener("click", () => {
 
 $("addQ").addEventListener("click", () => openForm(null));
 $("qCancel").addEventListener("click", () => $("qDialog").close());
+$("qX").addEventListener("click", () => $("qDialog").close());
 sel.addEventListener("change", render);

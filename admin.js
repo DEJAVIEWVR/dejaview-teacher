@@ -13,6 +13,8 @@ const DEFAULT_HEAD = { headName: "Dr. Nelidiza R. Arceta", headTitle: "Departmen
 let sections = [], teachers = [], students = [], head = { ...DEFAULT_HEAD };
 let myUid = "";
 const secNames = () => sections.map(s => s.name);
+// who already handles this section (active teachers only), not counting the teacher with id "except"
+const takenBy = (n, except) => (teachers.find(t => !t.archived && t.id !== except && (t.sections || []).includes(n)) || {}).name || "";
 const capOf = n => (sections.find(s => s.name === n) || {}).capacity || 45;
 const toDate = x => (x && x.toDate) ? x.toDate() : null;
 const uniq = list => { const seen = new Set(); return list.filter(n => { const k = normName(n); if (seen.has(k)) return false; seen.add(k); return true; }); };
@@ -71,7 +73,7 @@ function render() {
     }).join("") || '<tr><td colspan="6">No sections yet.</td></tr>';
 
     // Sections are tick boxes, so a teacher can never be given the same section twice
-    $("tSections").innerHTML = secNames().map(n => `<label class="chk"><input type="checkbox" value="${esc(n)}"> ${esc(n)}</label>`).join("")
+    $("tSections").innerHTML = secNames().map(n => { const o = takenBy(n); return `<label class="chk${o ? " taken" : ""}"><input type="checkbox" value="${esc(n)}"${o ? " disabled" : ""}> ${esc(n)}${o ? ` <small>(${esc(o)})</small>` : ""}</label>`; }).join("")
         || '<p class="hint">Add sections first.</p>';
 
     const byName = (x, y) => String(x.name || "").localeCompare(String(y.name || ""));
@@ -155,6 +157,7 @@ $("bell").addEventListener("click", () => {
     saveSeen(notes); updateBell();
 });
 $("noteClose").addEventListener("click", () => $("noteDialog").close());
+$("noteX").addEventListener("click", () => $("noteDialog").close());
 
 // ---------- the admin can also be a teacher ----------
 const myTeacher = () => teachers.find(t => t.id === myUid);
@@ -181,7 +184,7 @@ $("teacherBtn").addEventListener("click", async () => {
             validate: x => !/^[0-9]{10}$/.test(x.emp) ? "The Employee ID must be exactly 10 digits." : teachers.some(o => o.employeeId === x.emp) ? "That Employee ID is already used by another teacher." : ""
         });
         if (!v) return;
-        const chosen = await pickMany({ title: "Your sections", message: "Tick every section you will handle as a teacher.", options: secNames().map(n => ({ value: n, label: n })), selected: [] });
+        const chosen = await pickMany({ title: "Your sections", message: "Tick every section you will handle as a teacher.", options: secNames().map(n => { const o = takenBy(n, myUid); return { value: n, label: n, disabled: !!o, note: o }; }), selected: [] });
         if (chosen === null) return;
         if (!chosen.length) return toast("Tick at least one section.", "warn");
         await setDoc(doc(db, "teachers", myUid), { name: v.name.trim(), employeeId: v.emp, email: auth.currentUser.email || "", sections: uniq(chosen) });
@@ -208,9 +211,12 @@ $("guideBtn").addEventListener("click", () => window.open("guide-admin.html", "_
 
 // ---------- add sections ----------
 $("addSection").addEventListener("click", e => busy(e.currentTarget, async () => {
-    const raw = $("sectionName").value.split(/[,\n]/).map(cleanName).filter(Boolean);
+    // "BSTM" is fixed: the admin only types 1A, 2B ...
+    const raw = [$("sectionName").value].map(x => x.trim().replace(/^bstm[\s\-_]*/i, "")).filter(Boolean)
+        .map(x => cleanName("BSTM " + x));
+    if (raw.some(n => !/^BSTM [A-Z0-9][A-Z0-9\-]{0,9}$/.test(n))) return toast("Type only the year and letter, like 1A or 2B.", "warn");
     const cap = parseInt($("sectionCap").value, 10);
-    if (!raw.length) return toast("Type at least one section name.", "warn");
+    if (!raw.length) return toast("Type a section, like 1A or 2B.", "warn");
     if (!(cap >= 1 && cap <= 200)) return toast("Capacity must be a number from 1 to 200.", "warn");
     if (raw.some(n => n.length > 40)) return toast("A section name is too long (maximum 40 characters).", "warn");
 
@@ -330,7 +336,7 @@ document.addEventListener("click", async e => {
             const t = teachers.find(x => x.id === b.dataset.id);
             const chosen = await pickMany({
                 title: `Sections of ${t.name}`, message: "Tick every section this teacher handles.",
-                options: secNames().map(n => ({ value: n, label: n })), selected: t.sections || []
+                options: secNames().map(n => { const o = takenBy(n, t.id); return { value: n, label: n, disabled: !!o, note: o }; }), selected: t.sections || []
             });
             if (chosen === null) return;
             if (!chosen.length && !(await ask("No section ticked. This teacher will see no students. Continue?"))) return;

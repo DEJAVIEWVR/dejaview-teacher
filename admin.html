@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DejaView - Admin Portal</title>
     <style>body { visibility: hidden; }</style>
-    <link rel="stylesheet" href="dejaview.css?v=20261018j">
+    <link rel="stylesheet" href="dejaview.css?v=20261018m">
 </head>
 <body class="paged">
     <header>
@@ -59,11 +59,12 @@
 
         <section id="sections">
             <h2>Sections</h2>
-            <p class="hint">These sections appear as the dropdown in the VR register screen and are assigned to teachers. Add several at once: separate them with commas or put one per line. Names that already exist (even written differently, like "bstm-1b" and "BSTM 1B") are skipped.</p>
+            <p class="hint">These sections appear as the dropdown in the VR register screen and are assigned to teachers. "BSTM" is already written for you. Type only the year and letter, like 1A or 2B. Add one section at a time.</p>
             <div class="student-controls">
-                <textarea id="sectionName" rows="2" placeholder="e.g. BSTM 2A, BSTM 2B"></textarea>
+                <span class="sec-prefix" aria-hidden="true">BSTM</span>
+                <input id="sectionName" class="sec-suffix" maxlength="60" placeholder="1A or 2B" autocomplete="off" aria-label="Section, for example 1A or 2B">
                 <label class="inl">Students per section <input id="sectionCap" type="number" min="1" max="200" value="45"></label>
-                <button class="add-button" id="addSection">Add Section(s)</button>
+                <button class="add-button" id="addSection">Add Section</button>
             </div>
             <div class="student-table-container"><table>
                 <thead><tr><th>Section</th><th>Capacity</th><th>Registered</th><th>Pending</th><th>Teacher(s)</th><th>Action</th></tr></thead>
@@ -155,9 +156,10 @@
         </section>
     </main>
 
-    <dialog id="mDialog">
+    <dialog id="mDialog" class="dlg-fixed">
         <form id="mForm">
-            <h2 id="mTitleHead">Add module</h2>
+            <div class="dlg-top"><div><h2 id="mTitleHead">Add module</h2></div><button type="button" class="dlg-x" id="mX" title="Close" aria-label="Close"><i class="ico ico-x"></i></button></div>
+            <div class="dlg-scroll">
             <div class="seg" id="mKindSeg">
                 <button type="button" data-kind="lesson" class="on">Lesson</button>
                 <button type="button" data-kind="stop">Game history</button>
@@ -226,13 +228,15 @@
                 <label for="mLink">Link (optional)</label>
                 <input id="mLink" type="url" placeholder="https://">
             </div>
-            <div class="row"><button type="button" class="delete-button" id="mCancel">Cancel</button><button type="submit" class="add-button" id="mSave">Save</button></div>
+            </div>
+            <div class="row dlg-foot"><button type="button" class="delete-button" id="mCancel">Cancel</button><button type="submit" class="add-button" id="mSave">Save</button></div>
         </form>
     </dialog>
 
-    <dialog id="qDialog">
+    <dialog id="qDialog" class="dlg-fixed">
         <form id="qForm">
-            <h2 id="qTitle">Add question</h2>
+            <div class="dlg-top"><div><h2 id="qTitle">Add question</h2></div><button type="button" class="dlg-x" id="qX" title="Close" aria-label="Close"><i class="ico ico-x"></i></button></div>
+            <div class="dlg-scroll">
             <div id="qStopRow"><label for="qStop">Which stop is this question for?</label>
             <select id="qStop"></select></div>
             <label for="qSpeaker">Speaker (NPC name)</label>
@@ -241,19 +245,21 @@
             <textarea id="qText" rows="3" minlength="3" maxlength="400" required></textarea>
             <label for="qKey">Key points of a good answer (only the instructor sees this)</label>
             <textarea id="qKey" rows="4" maxlength="800" placeholder="e.g. Built in 1940s, dedicated to Our Lady of Lourdes, pilgrimage site..."></textarea>
-                        <div class="row"><button type="button" class="delete-button" id="qCancel">Cancel</button><button type="submit" class="add-button" id="qSave">Save</button></div>
+            </div>
+            <div class="row dlg-foot"><button type="button" class="delete-button" id="qCancel">Cancel</button><button type="submit" class="add-button" id="qSave">Save</button></div>
         </form>
     </dialog>
 
     <dialog id="noteDialog" class="note-dlg">
+        <button type="button" class="dlg-x" id="noteX" title="Close" aria-label="Close"><i class="ico ico-x"></i></button>
         <h2>Notifications</h2>
         <p class="hint" id="noteSub"></p>
         <div id="noteBody"></div>
         <div class="row"><button type="button" class="add-button" id="noteClose">Close</button></div>
     </dialog>
 
-    <script type="module" src="admin.js?v=20261018j"></script>
-    <script type="module" src="modules.js?v=20261018j"></script>
-    <script type="module" src="bank.js?v=20261018j"></script>
+    <script type="module" src="admin.js?v=20261018m"></script>
+    <script type="module" src="modules.js?v=20261018m"></script>
+    <script type="module" src="bank.js?v=20261018m"></script>
 </body>
 </html>

@@ -619,3 +619,35 @@ body.paged main > section .sec-head + .tabs{margin-top:4px}
 .who-box span{color:var(--mut);font-size:.82rem}
 
 .who-box{text-align:left!important;display:block}
+
+/* Sections: BSTM is fixed in front of what the admin types */
+.student-controls .sec-prefix{display:inline-flex;align-items:center;padding:0 12px;height:44px;border:1.5px solid var(--bd,#d9c9c9);border-right:0;border-radius:10px 0 0 10px;background:#f3ecec;font-weight:700;color:var(--m,#7a1018);letter-spacing:.04em}
+.student-controls .sec-suffix{width:220px;height:44px;border-radius:0 10px 10px 0;margin:0}
+/* a section that already has a teacher is greyed out */
+.chk.taken{opacity:.55;cursor:not-allowed}
+.chk.taken small{color:var(--mut,#777)}
+
+/* every dialog: title + X on top, buttons at the bottom, only the middle scrolls */
+dialog.dlg-fixed > form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;margin:0}
+dialog.dlg-fixed{width:min(560px,94vw)}
+dialog.dlg-fixed.wide{width:min(980px,96vw)}
+dialog.dv-dialog.dlg-fixed .dlg-scroll p{margin-top:4px}
+.dv-dialog .dlg-top h2{margin:0}
+dialog.note-dlg{position:relative}
+dialog.note-dlg > .dlg-x{position:absolute;top:12px;right:14px;z-index:2}
+#mSecRow[hidden]{display:none!important}
+
+/* Question Bank card: NPC name on the left, who added it on the right */
+.qcard .qtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.qcard .qright{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.qcard .chip.by{background:#fff;border:1px solid #e4d5d5;color:#6b3b3b}
+
+/* ---- tidy small dialogs (Reminder / Notes): even side padding, smaller X ---- */
+.note-dlg h2{padding:20px 64px 6px 24px}
+.note-dlg #remindBody,.note-dlg #noteBody{padding:6px 24px 10px;max-height:60vh;overflow:auto;line-height:1.5}
+.note-dlg #remindBody ul{margin:8px 0 10px;padding-left:22px}
+.note-dlg #remindBody li{margin:4px 0}
+.note-dlg #remindBody p,.note-dlg #noteBody p{margin:0 0 8px}
+.note-dlg #remindBody .hint,.note-dlg #remindBody small{display:block;padding:0;margin-top:10px}
+.note-dlg .row{padding:10px 24px 20px;justify-content:flex-end}
+dialog.note-dlg > .dlg-x{top:16px;right:18px;width:34px;height:34px;font-size:.9rem}

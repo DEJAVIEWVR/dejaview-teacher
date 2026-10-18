@@ -177,6 +177,7 @@ function openForm(m) {
     const curSecs = m ? secsOf(m) : [];
     const everyone = IS_ADMIN_PAGE && (!m || !curSecs.length);
     $("mAllWrap").hidden = !IS_ADMIN_PAGE;
+    $("mSecRow").hidden = IS_ADMIN_PAGE;   // the admin's lessons always reach every section, so there is nothing to tick
     $("mAll").checked = everyone;
     $("mSecs").innerHTML = mySecs.map(sn => `<label><input type="checkbox" value="${esc(sn)}" ${everyone || !m || !curSecs.length || curSecs.includes(sn) ? "checked" : ""} ${everyone ? "disabled" : ""}> ${esc(sn)}</label>`).join("") || '<span class="hint">No section is assigned to you yet. Ask the admin.</span>';
     const dest = m ? m.destinationID : current;
@@ -219,7 +220,7 @@ $("mForm").addEventListener("submit", async e => {
         if (images.reduce((n, x) => n + x.url.length, 0) > 800000) return toast("The photos are too big together. Remove one.", "err");
     }
     let sections = [...document.querySelectorAll("#mSecs input:checked")].map(c => c.value);
-    if (IS_ADMIN_PAGE && $("mAll").checked) sections = [];
+    if (IS_ADMIN_PAGE) sections = [];
     else if (!sections.length) return toast("Tick at least one section.", "warn");
     const same = x => (IS_ADMIN_PAGE ? x.byRole !== "teacher" : mineM(x)) && x.destinationID === dest && (isStop(x) === stop) && (x.title || "").trim().toLowerCase() === title.toLowerCase() && (!editing || x.id !== editing.id);
     if (mods.some(same)) return toast(stop ? "That stop already has a history. Edit it instead." : "This destination already has a lesson with that title.", "err");
@@ -263,3 +264,4 @@ document.addEventListener("click", async e => {
 });
 $("addMod").addEventListener("click", () => openForm(null));
 $("mCancel").addEventListener("click", () => $("mDialog").close());
+$("mX").addEventListener("click", () => $("mDialog").close());

@@ -2,7 +2,7 @@ import { auth, db, $, esc } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { collection, query, where, onSnapshot, getDoc, getDocs, doc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { DESTS } from "./destinations.js";
-import { printReport, loadCriteria, rubricOf, scoreRaw, CRIT } from "./report.js";
+import { printReport, loadCriteria, rubricOf, scoreRaw, CRIT, overallOf } from "./report.js";
 import { toast, ask, niceError } from "./toast.js";
 
 let me = null, evals = [], first = true, mods = [], curDest = DESTS[0];
@@ -78,8 +78,8 @@ function renderResults() {
     $("pdfBtn").style.display = sorted.length ? "" : "none";
     if (!sorted.length) { $("resultList").innerHTML = '<p class="hint">No results yet. They appear here after your instructor submits the evaluation.</p>'; return; }
 
-    const avg = sorted.reduce((n, r) => n + (+r.total || 0), 0) / sorted.length;
-    $("resultList").innerHTML = `<p class="perf-summary">Levels evaluated: ${sorted.length} of ${DESTS.length} &middot; Average: <b>${avg.toFixed(1)} / 100</b></p>
+    const avg = overallOf(sorted) || 0;
+    $("resultList").innerHTML = `<p class="perf-summary">Levels evaluated: ${sorted.length} of ${DESTS.length} &middot; Overall grade (score ÷ total × 100): <b>${avg.toFixed(1)} / 100</b></p>
       <div class="mgrid">${sorted.map(r => `<article class="mod-card">
         <div class="mod-top"><span class="mod-chip">Level ${r.level}</span><span class="mod-date">${fmtDate(toDate(r.submittedAt))}</span></div>
         <h3>${esc(r.destination)}</h3>

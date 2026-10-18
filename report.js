@@ -34,6 +34,20 @@ export function rubricOf(e) {
     if (e && e.knowledge !== undefined) return LEGACY;
     return CRIT;
 }
+// Zero-based grade: points earned ÷ total points × 100 (nothing is added, no base grade).
+export const maxOf = rub => (rub || []).reduce((n, r) => n + (+r[2] || 0), 0) || 100;
+export const gradeOf = (scores, rub) => {
+    const earned = Object.values(scores || {}).reduce((n, v) => n + (+v || 0), 0);
+    return Math.round(earned / maxOf(rub) * 1000) / 10;
+};
+// Overall grade of the maps that are graded: all points earned ÷ all points possible × 100
+export const overallOf = evs => {
+    const got = (evs || []).filter(Boolean);
+    if (!got.length) return null;
+    let earned = 0, max = 0;
+    got.forEach(e => { const m = maxOf(rubricOf(e)); earned += (+e.total || 0) / 100 * m; max += m; });
+    return max ? earned / max * 100 : null;
+};
 export const rubricFor = list => rubricOf((list || []).find(Boolean));
 
 // Opens the browser print window with a clean report. Choose "Save as PDF" as the destination.
@@ -42,7 +56,7 @@ export function printReport({ name, id, section, instructor, rows, asked }) {
     if (!area) { area = document.createElement("div"); area.id = "printArea"; document.body.appendChild(area); }
 
     const sorted = rows.slice().sort((a, b) => (a.level || 0) - (b.level || 0));
-    const avg = sorted.length ? sorted.reduce((n, r) => n + (+r.total || 0), 0) / sorted.length : 0;
+    const avg = overallOf(sorted) || 0;
     const rub = rubricFor(sorted);
     const fmt = v => (v == null || v === "") ? "-" : (+v).toFixed(1);
     const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
@@ -58,11 +72,10 @@ export function printReport({ name, id, section, instructor, rows, asked }) {
       </table>
       <table class="pr-table pr-crit"><thead><tr><th>Criteria</th>${sorted.map(r => `<th>${esc(r.destination)}</th>`).join("")}</tr></thead><tbody>
       ${rub.map(([k, l, m]) => `<tr><td>${esc(l)} <small>(max ${m})</small></td>${sorted.map(r => `<td>${fmt(scoreRaw(r, k))}</td>`).join("")}</tr>`).join("")}
-      <tr class="pr-total"><td>Total <small>(of 100)</small></td>${sorted.map(r => `<td><b>${fmt(r.total)}</b></td>`).join("")}</tr>
+      <tr class="pr-total"><td>Grade <small>(score ÷ total × 100)</small></td>${sorted.map(r => `<td><b>${fmt(r.total)}</b></td>`).join("")}</tr>
       </tbody></table>
       ${sorted.some(r => r.remarks) ? `<div class="pr-remarks"><b>Remarks</b>${sorted.filter(r => r.remarks).map(r => `<div class="pr-rem-item"><strong>${esc(r.destination)}</strong><p>${esc(r.remarks)}</p></div>`).join("")}</div>` : ""}
-      ${asked && asked.length ? `<div class="pr-remarks"><b>Questions asked</b>${asked.map(a => `<div class="pr-rem-item"><strong>Map ${a.level} &ndash; ${esc(a.destination)}</strong>${a.list.map(x => `<p>${esc(x.no)}. ${esc(x.text || "")} <small>(${esc(x.stop ? x.stop + ", " : "")}${esc(x.speaker || "")})</small></p>`).join("")}</div>`).join("")}</div>` : ""}
-      <p class="pr-sum">Levels evaluated: ${sorted.length} &middot; Average total: ${avg.toFixed(1)} / 100</p>
+      <p class="pr-sum">Levels evaluated: ${sorted.length} &middot; Overall grade (score ÷ total × 100): ${avg.toFixed(1)} / 100</p>
       <div class="pr-sign"><div><span></span>Instructor: ${esc(instructor || "")}</div><div><span></span>Date</div></div>`;
 
     openPrint("DejaView Report - " + name);

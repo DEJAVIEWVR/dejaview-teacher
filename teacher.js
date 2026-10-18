@@ -2,7 +2,7 @@ import { auth, db, $, esc } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { collection, query, where, getDocs, getDoc, setDoc, doc, updateDoc, deleteDoc, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { TERM_MONTHS, DESTS } from "./destinations.js";
-import { CRIT, printReport, printHtml, loadCriteria, scoreRaw, rubricFor } from "./report.js";
+import { CRIT, printReport, printHtml, loadCriteria, scoreRaw, rubricFor, gradeOf, overallOf } from "./report.js";
 import { toast, ask, choose, askText, busy, niceError } from "./toast.js";
 import { changeMyPassword } from "./account.js";
 
@@ -416,7 +416,7 @@ function renderStudents() {
     }, show === "grade" ? "Nobody is waiting for evaluation. A student shows here after finishing a map, until you release the score." : "No students match this filter.", sortFn);
 }
 
-const avgOf = s => { const got = esOf(s); return got.length ? got.reduce((n, e) => n + (+e.total || 0), 0) / got.length : null; };
+const avgOf = s => overallOf(esOf(s));   // all points earned ÷ all points possible × 100
 
 // ---------- evaluate (pop-up) ----------
 const totalOf = scores => Object.values(scores).reduce((n, v) => n + (+v || 0), 0);
@@ -435,7 +435,7 @@ function openEval(s) {
     }).join("")}</tr>`;
     $("evalBody").innerHTML = CRIT.map(([k, l, m, d]) => `<tr><td class="crit-lbl">${esc(l)} <span class="max-pill">max ${m}</span>${d ? `<small class="crit-d">${esc(d)}</small>` : ""}</td>
           ${DESTS.map((d, i) => `<td><input class="eval-in" type="number" step="0.5" min="0" max="${m}" data-lv="${i + 1}" data-k="${k}" data-max="${m}" placeholder="0-${m}" value="${scoreRaw(evs[i], k)}" ${lockedLv.has(i + 1) ? "disabled" : ""}></td>`).join("")}</tr>`).join("")
-        + `<tr class="tot"><td>Total <small>(of 100)</small></td>${evs.map((e, i) => `<td><b class="evTotal" data-lv="${i + 1}">${e.total != null ? (+e.total).toFixed(1) : "-"}</b></td>`).join("")}</tr>`
+        + `<tr class="tot"><td>Grade <small>(score ÷ total × 100)</small></td>${evs.map((e, i) => `<td><b class="evTotal" data-lv="${i + 1}">${e.total != null ? (+e.total).toFixed(1) : "-"}</b></td>`).join("")}</tr>`
         + `<tr><td>Status</td>${evs.map((e, i) => `<td data-st="${i + 1}">${e.status === "submitted" ? '<span class="chip ok">Released <i class="ico ico-lock"></i></span>' : e.status === "draft" ? '<span class="chip warn">Draft</span>' : '<span class="chip">Not graded</span>'}</td>`).join("")}</tr>`;
     $("evalRemarks").innerHTML = DESTS.map((d, i) => {
         const e = evals[evalId(s.id, i + 1)] || {}, txt = e.remarks || "";
@@ -460,7 +460,7 @@ $("evalBody").addEventListener("input", e => {
     inp.classList.remove("bad");
     const ins = [...$("evalBody").querySelectorAll(`.eval-in[data-lv="${inp.dataset.lv}"]`)];
     $("evalBody").querySelector(`.evTotal[data-lv="${inp.dataset.lv}"]`).textContent =
-        ins.some(i => i.value !== "") ? ins.reduce((n, i) => n + clamp(+i.value, +i.dataset.max), 0).toFixed(1) : "-";
+        ins.some(i => i.value !== "") ? gradeOf(ins.map(i => clamp(+i.value, +i.dataset.max)), CRIT).toFixed(1) : "-";
 });
 
 $("evalBody").addEventListener("change", e => {
@@ -525,7 +525,7 @@ async function saveEval(submit, btn) {
             r.ins.forEach(i => scores[i.dataset.k] = clamp(+i.value, +i.dataset.max));
             data.scores = scores;
             data.rubric = CRIT.map(([key, label, max]) => ({ key, label, max }));   // the rubric used for this grade
-            data.total = Math.round(totalOf(scores) * 10) / 10;
+            data.total = gradeOf(scores, CRIT);   // score ÷ total × 100
             if (submit) data.submittedAt = Timestamp.now();
             await setDoc(doc(db, "evaluations", evalId(s.id, lv)), data);
         }
@@ -549,9 +549,9 @@ function openView(s) {
     const num = (e, k) => e ? (+scoreRaw(e, k) || 0).toFixed(1) : "-";
     $("viewHead").innerHTML = `<tr><th>Criteria</th>${DESTS.map((d, i) => `<th>Map ${i + 1}<small>${esc(d)}</small></th>`).join("")}</tr>`;
     $("viewBody").innerHTML = rub.map(([k, l, m]) => `<tr><td class="crit-lbl">${esc(l)} <span class="max-pill">max ${m}</span></td>${evs.map(e => `<td>${num(e, k)}</td>`).join("")}</tr>`).join("")
-        + `<tr class="tot"><td>Total <small>(of 100)</small></td>${evs.map(e => `<td><b>${e ? (+e.total || 0).toFixed(1) : "-"}</b></td>`).join("")}</tr>`
+        + `<tr class="tot"><td>Grade <small>(score ÷ total × 100)</small></td>${evs.map(e => `<td><b>${e ? (+e.total || 0).toFixed(1) : "-"}</b></td>`).join("")}</tr>`
         + `<tr><td>Status</td>${evs.map(e => `<td>${!e ? '<span class="chip">Not graded</span>' : e.status === "submitted" ? '<span class="chip ok">Released</span>' : '<span class="chip warn">Draft</span>'}</td>`).join("")}</tr>`
-        + (() => { const a = avgOf(s), n = evs.filter(Boolean).length; return `<tr class="tot"><td>Average of all maps</td><td colspan="${DESTS.length}"><b>${a == null ? "-" : a.toFixed(1) + " / 100"}</b> <small>(${n} of ${DESTS.length} maps graded)</small></td></tr>`; })();
+        + (() => { const a = avgOf(s), n = evs.filter(Boolean).length; return `<tr class="tot"><td>Overall grade <small>(all scores ÷ all totals × 100)</small></td><td colspan="${DESTS.length}"><b>${a == null ? "-" : a.toFixed(1) + " / 100"}</b> <small>(${n} of ${DESTS.length} maps graded)</small></td></tr>`; })();
     $("viewRemarks").innerHTML = DESTS.map((d, i) => {
         const e = evs[i];
         return `<div class="rem-view"><b>Map ${i + 1} &middot; ${esc(d)}</b><p class="${e && e.remarks ? "" : "none"}">${e && e.remarks ? esc(e.remarks) : "No remarks."}</p></div>`;
@@ -580,14 +580,14 @@ $("viewPrint").addEventListener("click", () => {
     const s = viewing, rows = ALL.map(n => evals[evalId(s.id, n)]).filter(Boolean);
     if (!rows.length) return toast("This student has no saved evaluation yet.", "warn");
     toast("Choose \"Save as PDF\" in the print window.", "info");
-    printReport({ name: s.fullname, id: s.studentIdNumber, section: s.section, instructor: me.name || "", rows, asked: ALL.map(n => ({ level: n, destination: DESTS[n - 1], list: askedList(s, n) })).filter(x => x.list.length) });
+    printReport({ name: s.fullname, id: s.studentIdNumber, section: s.section, instructor: me.name || "", rows });
 });
 
 function sheetFor(sec, today) {
     const list = students.filter(s => s.status === "active" && s.section === sec).sort(sortName);
     const rows = list.map((s, n) => {
         const es = ALL.map(i => evals[evalId(s.id, i)]), got = es.filter(Boolean);
-        const avg = got.length ? got.reduce((a, e) => a + (+e.total || 0), 0) / got.length : null;
+        const avg = overallOf(got);
         return `<tr><td>${n + 1}</td><td>${esc(s.studentIdNumber)}</td><td style="text-align:left">${esc(s.fullname)}</td>${es.map(e => `<td>${e ? (+e.total).toFixed(1) : "-"}</td>`).join("")}<td><b>${avg == null ? "-" : avg.toFixed(1)}</b></td></tr>`;
     }).join("");
     return `<div class="pr-sec"><div class="pr-head"><img class="pr-logo" src="images/bulsu-seal.png" alt="BulSU seal"><img class="pr-logo" src="images/htm-logo.png" alt="HTM logo" onerror="this.style.display='none'"><div><strong>Bulacan State University &middot; Sarmiento Campus</strong><br>
@@ -731,6 +731,7 @@ $("pendSection").addEventListener("change", renderPending);
 $("pendSearch").addEventListener("input", renderPending);
 $("searchStudent").addEventListener("input", renderStudents);
 $("remindOk").addEventListener("click", () => $("remindDialog").close());
+$("remindX").addEventListener("click", () => $("remindDialog").close());
 window.addEventListener("beforeunload", e => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
 
 // ---------- bell, password, hash toasts, logout ----------
@@ -751,6 +752,7 @@ $("bell").addEventListener("click", () => {
     saveSeen(notes); updateBell();   // mark as read
 });
 $("noteClose").addEventListener("click", () => $("noteDialog").close());
+$("noteX").addEventListener("click", () => $("noteDialog").close());
 
 
 // manual "Watch live": type the phone's address if the card has no Watch button
